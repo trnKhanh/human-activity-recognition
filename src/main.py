@@ -248,12 +248,12 @@ def main(args):
     print("=" * os.get_terminal_size().columns)
 
     optimizer = create_optimizer(args, model)
+    if (args.load_ckpt or args.auto_resume) and len(args.ckpt_dir) > 0:
+        load_model(args.ckpt_dir, args, model, optimizer)
     print("=" * os.get_terminal_size().columns)
     print(f"Optimizer: {str(optimizer)}")
     print("=" * os.get_terminal_size().columns)
 
-    if (args.load_ckpt or args.auto_resume) and len(args.ckpt_dir) > 0:
-        load_model(args.ckpt_dir, args, model, optimizer)
 
     print("=" * os.get_terminal_size().columns)
     print("Training:")
@@ -273,6 +273,7 @@ def main(args):
         warmup_epochs=args.warmup_epochs,
         start_warmup_lr=args.start_warmup_lr,
     )
+    assert(len(lr_schedule_values) == niter_per_epoch * args.epochs)
 
     best_acc = 0.0
     if len(args.log_dir) > 0:

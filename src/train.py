@@ -24,8 +24,9 @@ def train_one_epoch(
     loss_values = []
 
     it = start_step
-    for id, (videos, labels) in tqdm(enumerate(dataloader)):
-        it = it + 1
+    if lr_schedule_values is not None:
+        print(f"Start lr={lr_schedule_values[it]}")
+    for videos, labels in tqdm(dataloader):
         if lr_schedule_values is not None:
             for param_group in optimizer.param_groups:
                 param_group["lr"] = lr_schedule_values[it]
@@ -43,7 +44,10 @@ def train_one_epoch(
         optimizer.step()
 
         loss_values.append(loss.item())
+        it = it + 1
     print()
+    if lr_schedule_values is not None:
+        print(f"End lr={lr_schedule_values[it-1]}")
     loss_values = np.asarray(loss_values)
     print(f"Average loss={np.mean(loss_values)}")
 
