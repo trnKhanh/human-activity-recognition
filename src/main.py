@@ -40,6 +40,12 @@ def create_args():
         type=int,
         help="Sampling rate (default: 2)",
     )
+    parser.add_argument(
+        "--num-workers",
+        default=0,
+        type=int,
+        help="Number of workers in dataloader (default: 0)",
+    )
 
     # Model argument
     parser.add_argument(
@@ -199,10 +205,20 @@ def main(args):
         mode="validation",
     )
     train_dataloader = DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True
+        train_dataset,
+        batch_size=args.batch_size,
+        shuffle=True,
+        drop_last=True,
+        pin_memory=True,
+        num_workers=args.num_workers,
     )
     valid_dataloader = DataLoader(
-        valid_dataset, batch_size=1, shuffle=False, drop_last=False
+        valid_dataset,
+        batch_size=1,
+        shuffle=False,
+        drop_last=False,
+        pin_memory=True,
+        num_workers=args.num_workers,
     )
     print("=" * os.get_terminal_size().columns)
     print("Dataset:")
@@ -284,7 +300,6 @@ def main(args):
                 f.write(f"  Validation:\n")
                 f.write(f"    Accuracy: {valid_acc:.4f}\n")
                 f.write(f"    Loss: {np.mean(valid_loss_values):.4f}\n")
-                
 
         if len(args.ckpt_dir) > 0:
             if args.save_best_ckpt:
