@@ -46,7 +46,7 @@ class VideoDataset(Dataset):
                 video_transforms.VideoResize(self.img_size),
                 video_transforms.VideoCenterCrop(self.crop_size),
                 video_transforms.VideoToTensor(),
-                # video_transforms.VideoNormalize(imagenet_mean, imagenet_std),
+                video_transforms.VideoNormalize(imagenet_mean, imagenet_std),
             ]
         )
 
@@ -74,9 +74,20 @@ class VideoDataset(Dataset):
 
                     video_paths.append(video_path)
                     labels.append(class_id[video_template])
-            pass
         elif mode == "validation":
-            pass
+            label_file = anno_path + "/validation.json"
+            with open(label_file, "r") as f:
+                data = json.load(f)
+                for sample in data:
+                    video_id = sample["id"]
+                    video_label = sample["label"]
+                    video_template = (
+                        sample["template"].replace("[", "").replace("]", "")
+                    )
+                    video_path = f"{data_path}/{video_id}.webm"
+
+                    video_paths.append(video_path)
+                    labels.append(class_id[video_template])
         elif mode == "test":
             pass
         else:

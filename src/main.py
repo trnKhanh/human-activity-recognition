@@ -4,15 +4,13 @@ import argparse
 import torch
 from torch.utils.data import DataLoader
 
-from timm.models import create_model
-
 from datasets import VideoDataset
-from train import train_one_epoch
+from train import train_one_epoch, valid_one_epoch
 from optim import create_optimizer, cosine_scheduler
 
-from model import VisionTransformer
+from utils import create_model, save_model, load_model
 
-from utils import save_model, load_model
+import numpy as np
 
 
 def create_args():
@@ -44,6 +42,18 @@ def create_args():
     )
 
     # Model argument
+    parser.add_argument(
+        "--model",
+        default="stvit_base_patch16_224",
+        type=str,
+        help="Name of model (default: vit_base_patch16_224)",
+    )
+    parser.add_argument(
+        "--num-classes",
+        default=174,
+        type=int,
+        help="Number of classes (default: 174)",
+    )
     parser.add_argument(
         "--patch-size",
         default=16,
@@ -124,6 +134,9 @@ def create_args():
 
     # Train arguments
     parser.add_argument(
+        "--log-dir", default="", type=str, help="Where to save log"
+    )
+    parser.add_argument(
         "--start-epoch", default=0, type=int, help="Epoch to start (default: 0)"
     )
     parser.add_argument(
@@ -151,8 +164,7 @@ def create_args():
     )
     parser.add_argument(
         "--save-best-ckpt",
-        default=True,
-        type=bool,
+        action="store_true",
         help="Whether to save best checkpoints, having highest acc on validation set",
     )
 
@@ -190,7 +202,7 @@ def main(args):
         train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True
     )
     valid_dataloader = DataLoader(
-        valid_dataset, batch_size=args.batch_size, shuffle=False, drop_last=True
+        valid_dataset, batch_size=1, shuffle=False, drop_last=False
     )
     print("=" * os.get_terminal_size().columns)
     print("Dataset:")
@@ -203,8 +215,8 @@ def main(args):
 
     device = torch.device(args.device)
     model = create_model(
-        "vit_base_patch16_224",
-        pretrained=False,
+        args.model,
+        num_classes=args.num_classes,
         attn_drop_rate=args.attn_drop_rate,
         drop_rate=args.drop_rate,
         drop_path_rate=args.drop_path_rate,
@@ -224,7 +236,7 @@ def main(args):
     print(f"Optimizer: {str(optimizer)}")
     print("=" * os.get_terminal_size().columns)
 
-    if args.load_ckpt and len(args.ckpt_dir) > 0:
+    if (args.load_ckpt or args.auto_resume) and len(args.ckpt_dir) > 0:
         load_model(args.ckpt_dir, args, model, optimizer)
 
     print("=" * os.get_terminal_size().columns)
@@ -246,25 +258,55 @@ def main(args):
         start_warmup_lr=args.start_warmup_lr,
     )
 
-    for i in range(args.start_epoch, args.epochs):
-        train_one_epoch(
+    best_acc = 0.0
+    if len(args.log_dir) > 0:
+        os.makedirs(os.path.dirname(args.log_dir), exist_ok=True)
+
+    for e in range(args.start_epoch, args.epochs):
+        train_loss_values = train_one_epoch(
             model=model,
             dataloader=train_dataloader,
             optimizer=optimizer,
             device=device,
-            epoch=i,
+            epoch=e,
             lr_schedule_values=lr_schedule_values,
-            start_step=i * niter_per_epoch,
+            start_step=e * niter_per_epoch,
         )
+        valid_acc, valid_loss_values = valid_one_epoch(
+            model=model, dataloader=valid_dataloader, device=device
+        )
+
+        if len(args.log_dir) > 0:
+            with open(args.log_dir, "a") as f:
+                f.write(f"Epoch {e}:\n")
+                f.write(f"  Train:\n")
+                f.write(f"    Loss: {np.mean(train_loss_values):.4f}\n")
+                f.write(f"  Validation:\n")
+                f.write(f"    Accuracy: {valid_acc:.4f}\n")
+                f.write(f"    Loss: {np.mean(valid_loss_values):.4f}\n")
+                
+
         if len(args.ckpt_dir) > 0:
-            if (i + 1) % args.ckpt_save_freq == 0 or i + 1 == args.epochs:
-                save_model(
-                    args.ckpt_dir,
-                    args,
-                    i,
-                    model,
-                    optimizer,
-                )
+            if args.save_best_ckpt:
+                if valid_acc > best_acc:
+                    save_model(
+                        args.ckpt_dir,
+                        args,
+                        e,
+                        model,
+                        optimizer,
+                    )
+            else:
+                if (e + 1) % args.ckpt_save_freq == 0 or e + 1 == args.epochs:
+                    save_model(
+                        args.ckpt_dir,
+                        args,
+                        e,
+                        model,
+                        optimizer,
+                    )
+
+        best_acc = max(best_acc, valid_acc)
 
 
 if __name__ == "__main__":

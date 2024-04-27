@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from timm.models.layers import drop_path
-from timm.models.registry import register_model
 
 import numpy as np
 
@@ -12,7 +11,7 @@ class DropPath(nn.Module):
         super().__init__()
         self.drop_prob = drop_prob
 
-    def foward(self, x):
+    def forward(self, x):
         return drop_path(x, self.drop_prob, self.training)
 
 
@@ -190,7 +189,7 @@ def get_positional_encoding(num_pos, num_dims):
     return table
 
 
-class VisionTransformer(nn.Module):
+class VIT(nn.Module):
     def __init__(
         self,
         img_size=224,
@@ -268,9 +267,8 @@ class VisionTransformer(nn.Module):
         return x
 
 
-@register_model
-def vit_base_patch16_224(pretrained=False, **kwargs):
-    model = VisionTransformer(
+def stvit_base_patch16_224(**kwargs):
+    model = VIT(
         img_size=224,
         patch_size=16,
         embed_dim=768,
