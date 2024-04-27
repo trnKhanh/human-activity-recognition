@@ -2,3 +2,4 @@ torch
 torchvision
 numpy==1.26.4
 tqdm==4.66.2
+timm
