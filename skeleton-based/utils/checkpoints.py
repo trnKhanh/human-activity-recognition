@@ -33,6 +33,6 @@ def load_checkpoint(
     if "scheduler" in state_dict:
         lr_scheduler.load_state_dict(state_dict["scheduler"])
     if "epoch" in state_dict:
-        return state_dict["epoch"]
+        return state_dict["epoch"] + 1
     else:
         return 1
