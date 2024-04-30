@@ -94,6 +94,9 @@ def create_args():
         "--resume", default="", type=str, help="Resume training from checkpoint"
     )
     parser.add_argument(
+        "--load-ckpt", default="", type=str, help="Load checkpoint"
+    )
+    parser.add_argument(
         "--save-freq",
         default=10,
         type=int,
@@ -188,6 +191,13 @@ def main(args):
         target_lr=args.target_lr,
         max_steps=max_steps,
     )
+    if len(args.load_ckpt) > 0 and os.path.isfile(args.load_ckpt):
+        state_dict = torch.load(args.load_ckpt)
+        if "model" in state_dict:
+            model.load_state_dict(state_dict["model"])
+        else:
+            model.load_state_dict(state_dict)
+
     if len(args.resume) > 0 and os.path.isfile(args.resume):
         args.start_epoch = load_checkpoint(
             args.resume, model, optimizer, lr_scheduler
