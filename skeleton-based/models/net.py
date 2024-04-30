@@ -60,7 +60,7 @@ class STGCNBlock(nn.Module):
         t_stride=1,
         dropout_rate=0.0,
         residual=True,
-        act_layer=nn.GELU,
+        act_layer=nn.ReLU,
     ):
         super().__init__()
         self.gcn = GCNUnit(in_channels, out_channels, A, importance)
@@ -101,7 +101,7 @@ class STGCN(nn.Module):
         importance=True,
         residual=True,
         dropout_rate=0.0,
-        act_layer=nn.GELU,
+        act_layer=nn.ReLU,
     ):
         super().__init__()
         self.A = A
