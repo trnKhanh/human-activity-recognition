@@ -40,7 +40,7 @@ class NTUDataset(Dataset):
             else: 
                 c = "C"
             id = int(file.name[file.name.find(c) + 1: file.name.find(c) + 4])
-            label = int(file.name[file.name.find("A") + 1: file.name.find("A") + 4])
+            label = int(file.name[file.name.find("A") + 1: file.name.find("A") + 4]) - 1
             if id in train_ids:
                 self.samples["train"].append(file.path)
                 self.labels["train"].append(label)
@@ -56,7 +56,7 @@ class NTUDataset(Dataset):
                 else: 
                     c = "C"
                 id = int(file.name[file.name.find(c) + 1: file.name.find(c) + 4])
-                label = int(file.name[file.name.find("A") + 1: file.name.find("A") + 4])
+                label = int(file.name[file.name.find("A") + 1: file.name.find("A") + 4]) - 1
                 if id in train_ids:
                     self.samples["train"].append(file.path)
                     self.labels["train"].append(label)
