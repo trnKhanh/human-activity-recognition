@@ -152,5 +152,4 @@ class STGCN(nn.Module):
         x = x.view(N, C, T, V * M)
         x = self.avg_pool(x).squeeze(dim=(2, 3))
         x = self.fc(x)
-        x = x.softmax(-1)
         return x
