@@ -62,23 +62,24 @@ def valid_one_epoch(
     loss_values = []
     correct_count = 0
     total_count = 0
-    for samples, labels in tqdm(dataloader):
-        samples = samples.to(device)
-        labels = labels.to(device)
+    with torch.no_grad():
+        for samples, labels in tqdm(dataloader):
+            samples = samples.to(device)
+            labels = labels.to(device)
 
-        preds = model(samples)
-        loss = loss_fn(preds, labels)
+            preds = model(samples)
+            loss = loss_fn(preds, labels)
 
-        pred_classes = torch.argmax(preds, dim=-1)
-        correct_count += torch.sum(pred_classes == labels).to("cpu").item()
-        total_count += len(preds)
+            pred_classes = torch.argmax(preds, dim=-1)
+            correct_count += torch.sum(pred_classes == labels).to("cpu").item()
+            total_count += len(preds)
 
-        loss_values.append(loss.to("cpu").item())
+            loss_values.append(loss.to("cpu").item())
 
-    avg_loss = np.mean(np.array(loss_values))
-    acc = correct_count / total_count
-    print(f"  Avg Loss: {avg_loss:.6f}")
-    print(f"  Accuracy: {acc:.6f}")
-    print("- " * (os.get_terminal_size().columns // 2))
+        avg_loss = np.mean(np.array(loss_values))
+        acc = correct_count / total_count
+        print(f"  Avg Loss: {avg_loss:.6f}")
+        print(f"  Accuracy: {acc:.6f}")
+        print("- " * (os.get_terminal_size().columns // 2))
 
     return avg_loss, acc
