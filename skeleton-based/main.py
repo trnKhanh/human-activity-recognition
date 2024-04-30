@@ -199,55 +199,62 @@ def main(args):
     print(f"  Number of parameters: {num_params}")
     print("=" * os.get_terminal_size().columns)
 
-    log = []
-    if len(args.log_path) > 0:
-        os.makedirs(os.path.dirname(args.log_path), exist_ok=True)
-    if len(args.save_path) > 0:
-        os.makedirs(os.path.dirname(args.save_path), exist_ok=True)
-    min_loss = np.Inf
-    for e in range(args.start_epoch, args.epochs + 1):
-        train_avg_loss, train_loss_values = train_one_epoch(
-            epoch=e,
-            model=model,
-            optimizer=optimizer,
-            loss_fn=loss_fn,
-            dataloader=train_dataloader,
-            device=args.device,
-            start_step=(e - 1) * steps_per_epoch + 1,
-            lr_schedule=lr_scheduler,
-        )
-        valid_avg_loss, valid_acc = valid_one_epoch(
-            model=model,
-            loss_fn=loss_fn,
-            dataloader=valid_dataloader,
-            device=args.device,
-        )
+    if args.train:
+        log = []
         if len(args.log_path) > 0:
-            log.append(
-                {
-                    "train_avg_loss": train_avg_loss,
-                    "train_loss_values": train_loss_values,
-                    "valid_avg_loss": valid_avg_loss,
-                    "valid_acc": valid_acc,
-                }
-            )
-            with open(args.log_path, "w", encoding="utf-8") as f:
-                json.dump(log, f, ensure_ascii=False, indent=4)
+            os.makedirs(os.path.dirname(args.log_path), exist_ok=True)
         if len(args.save_path) > 0:
-            if args.save_best:
-                if valid_avg_loss < min_loss:
-                    save_checkpoint(
-                        args.save_path, model, optimizer, lr_scheduler, e
-                    )
-            else:
-                if (e % args.save_freq) == 0 or e == args.epochs:
-                    save_checkpoint(
-                        args.save_path, model, optimizer, lr_scheduler, e
-                    )
+            os.makedirs(os.path.dirname(args.save_path), exist_ok=True)
+        min_loss = np.Inf
+        for e in range(args.start_epoch, args.epochs + 1):
+            train_avg_loss, train_loss_values = train_one_epoch(
+                epoch=e,
+                model=model,
+                optimizer=optimizer,
+                loss_fn=loss_fn,
+                dataloader=train_dataloader,
+                device=args.device,
+                start_step=(e - 1) * steps_per_epoch + 1,
+                lr_schedule=lr_scheduler,
+            )
+            valid_avg_loss, valid_acc = valid_one_epoch(
+                model=model,
+                loss_fn=loss_fn,
+                dataloader=valid_dataloader,
+                device=args.device,
+            )
+            if len(args.log_path) > 0:
+                log.append(
+                    {
+                        "train_avg_loss": train_avg_loss,
+                        "train_loss_values": train_loss_values,
+                        "valid_avg_loss": valid_avg_loss,
+                        "valid_acc": valid_acc,
+                    }
+                )
+                with open(args.log_path, "w", encoding="utf-8") as f:
+                    json.dump(log, f, ensure_ascii=False, indent=4)
+            if len(args.save_path) > 0:
+                if args.save_best:
+                    if valid_avg_loss < min_loss:
+                        save_checkpoint(
+                            args.save_path, model, optimizer, lr_scheduler, e
+                        )
+                else:
+                    if (e % args.save_freq) == 0 or e == args.epochs:
+                        save_checkpoint(
+                            args.save_path, model, optimizer, lr_scheduler, e
+                        )
 
-        min_loss = min(min_loss, valid_avg_loss)
+            min_loss = min(min_loss, valid_avg_loss)
 
-    print("=" * os.get_terminal_size().columns)
+    valid_avg_loss, valid_acc = valid_one_epoch(
+        model=model,
+        loss_fn=loss_fn,
+        dataloader=valid_dataloader,
+        device=args.device,
+    )
+    print(f"Evalution accuracy: {valid_acc}")
 
 
 if __name__ == "__main__":

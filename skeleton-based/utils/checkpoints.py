@@ -3,7 +3,11 @@ from torch import nn, optim
 
 
 def save_checkpoint(
-    path: str, model: nn.Module, optimizer: optim.Optimizer, lr_scheduler,epoch: int
+    path: str,
+    model: nn.Module,
+    optimizer: optim.Optimizer,
+    lr_scheduler,
+    epoch: int,
 ):
     print(f"Saving model to {path}")
     torch.save(
@@ -15,6 +19,8 @@ def save_checkpoint(
         },
         path,
     )
+
+
 def load_checkpoint(
     path: str, model: nn.Module, optimizer: optim.Optimizer, lr_scheduler
 ):
@@ -30,4 +36,3 @@ def load_checkpoint(
         return state_dict["epoch"]
     else:
         return 1
-

@@ -1,5 +1,6 @@
 import torch
 
+
 def build_A(graph_args):
     type = graph_args["partition_type"]
     if type == "spatial":
@@ -27,9 +28,9 @@ def build_A(graph_args):
     else:
         raise NotImplemented()
 
+
 def dfs(u, adj, r):
     for v in range(adj.size()[1]):
         if adj[u][v] and r[v] == -1:
             r[v] = r[u] + 1
             dfs(v, adj, r)
-

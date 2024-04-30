@@ -39,7 +39,7 @@ def train_one_epoch(
         loss.backward()
         optimizer.step()
 
-        loss_values.append(loss.item())
+        loss_values.append(loss.to("cpu").item())
         cur_step += 1
 
     if lr_schedule is not None:
@@ -68,12 +68,12 @@ def valid_one_epoch(
 
         preds = model(samples)
         loss = loss_fn(preds, labels)
-        
+
         pred_classes = torch.argmax(preds, dim=-1)
-        correct_count += torch.sum(pred_classes == labels).item()
+        correct_count += torch.sum(pred_classes == labels).to("cpu").item()
         total_count += len(preds)
 
-        loss_values.append(loss.item())
+        loss_values.append(loss.to("cpu").item())
 
     avg_loss = np.mean(np.array(loss_values))
     acc = correct_count / total_count

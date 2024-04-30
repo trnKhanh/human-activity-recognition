@@ -133,11 +133,15 @@ class STGCN(nn.Module):
 
     def forward(self, x):
         N, C, T, V, M = x.size()
-        x = x.permute(0, 4, 3, 1, 2).contiguous() # N, C, T, V, M => N, M, V, C, T
+        x = x.permute(
+            0, 4, 3, 1, 2
+        ).contiguous()  # N, C, T, V, M => N, M, V, C, T
         x = x.view(N * M, V * C, T)
         x = self.data_norm(x)
         x = x.view(N, M, V, C, T)
-        x = x.permute(0, 1, 3, 4, 2).contiguous() # N, M, V, C, T => N, M, C, T, V
+        x = x.permute(
+            0, 1, 3, 4, 2
+        ).contiguous()  # N, M, V, C, T => N, M, C, T, V
         x = x.view(N * M, C, T, V)
 
         for blk in self.blocks:
@@ -150,5 +154,3 @@ class STGCN(nn.Module):
         x = self.fc(x)
         x = x.softmax(-1)
         return x
-
-

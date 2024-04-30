@@ -25,6 +25,7 @@ ADJ = [
     (25, 12),
 ]
 
+
 def get_ntu_graph_args(partition_type: str):
     args = {
         "partition_type": partition_type,
@@ -33,5 +34,3 @@ def get_ntu_graph_args(partition_type: str):
         "center": 21,
     }
     return args
-
-

@@ -28,6 +28,7 @@ class CosineSchedule(object):
             )
         else:
             return self.target_lr
+
     def state_dict(self):
         return {
             "base_lr": self.base_lr,
@@ -35,6 +36,7 @@ class CosineSchedule(object):
             "warmup_steps": self.warmup_steps,
             "max_steps": self.max_steps,
         }
+
     def load_state_dict(self, state_dict):
         for k, v in state_dict.items():
             if k == "base_lr":
