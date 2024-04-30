@@ -46,6 +46,12 @@ def create_args():
     parser.add_argument(
         "--batch-size", default=64, type=int, help="Batch size (default: 64)"
     )
+    parser.add_argument(
+        "--num-workers",
+        default=1,
+        type=int,
+        help="Number of workers used to load data (default: 1)",
+    )
     # Optimizer
     parser.add_argument(
         "--base-lr",
@@ -134,12 +140,16 @@ def main(args):
         batch_size=args.batch_size,
         shuffle=True,
         drop_last=True,
+        num_workers=args.num_workers,
+        pin_memory=True,
     )
     valid_dataloader = DataLoader(
         dataset=valid_dataset,
         batch_size=args.batch_size,
         shuffle=False,
         drop_last=False,
+        num_workers=args.num_workers,
+        pin_memory=True,
     )
     args.device = torch.device(args.device)
 
