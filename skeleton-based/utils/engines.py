@@ -63,6 +63,9 @@ def valid_one_epoch(
 ):
     model.eval()
 
+    preds_arr = []
+    labels_arr = []
+
     loss_values = []
     correct_count = 0
     total_count = 0
@@ -80,6 +83,10 @@ def valid_one_epoch(
 
                 pred_classes = torch.argmax(preds, dim=1)
                 correct_count += (pred_classes == labels).sum().item()
+
+                preds_arr.extend(pred_classes)
+                labels_arr.extend(labels)
+
                 total_count += len(labels)
                 tepoch.set_postfix(
                     avg_loss=np.mean(np.array(loss_values)),
@@ -89,4 +96,4 @@ def valid_one_epoch(
             avg_loss = sum(loss_values) / len(loss_values)
             acc = correct_count / total_count
 
-    return avg_loss, acc
+    return avg_loss, acc, preds_arr, labels_arr

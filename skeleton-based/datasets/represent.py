@@ -2,6 +2,7 @@ import numpy as np
 import os
 from tqdm import tqdm
 from argparse import ArgumentParser
+from augment import moving_augment
 import cv2 as cv
 
 
@@ -83,7 +84,7 @@ def main(args):
     classes = load_classes(args)
 
     width, height = 1920, 1080
-    fps = 20
+    fps = 10
     exists = dict()
     for file in os.scandir(args.data_dir):
         tmp = file.name.find("A")
@@ -106,6 +107,8 @@ def main(args):
         )
 
         C, T, V, M = data.shape
+        data = moving_augment(data)
+        # data_2d = moving_augment(data_2d)
         print(action_id)
         print(data.shape)
         print(data_2d.shape)
@@ -143,7 +146,7 @@ def main(args):
             video.write(frame)
         video.release()
     if len(args.extra_data_dir) > 0:
-        for file in os.scandir(args.data_dir):
+        for file in os.scandir(args.extra_data_dir):
             tmp = file.name.find("A")
             action_id = int(file.name[tmp + 1 : tmp + 4])
             if action_id in exists:
@@ -151,7 +154,7 @@ def main(args):
             exists[action_id] = 1
 
             data = np.load(file.path, allow_pickle=True)
-            path_2d = os.path.join(args.data_dir_2d, file.name)
+            path_2d = os.path.join(args.extra_data_dir_2d, file.name)
             data_2d = np.load(path_2d, allow_pickle=True)
             fourcc = cv.VideoWriter_fourcc(*"mp4v")
             video = cv.VideoWriter(

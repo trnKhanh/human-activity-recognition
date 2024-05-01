@@ -77,12 +77,8 @@ def main(args):
 
 
 def convert_to_numpy(data, max_frame=300, num_bodies=2, num_joints=25):
-    np_data3d = np.zeros(
-        (num_bodies, 300, num_joints, 3), dtype=np.float32
-    )
-    np_data2d = np.zeros(
-        (num_bodies, 300, num_joints, 2), dtype=np.float32
-    )
+    np_data3d = np.zeros((num_bodies, 300, num_joints, 3), dtype=np.float32)
+    np_data2d = np.zeros((num_bodies, 300, num_joints, 2), dtype=np.float32)
 
     bodies = dict()
 
@@ -101,6 +97,7 @@ def convert_to_numpy(data, max_frame=300, num_bodies=2, num_joints=25):
             for jidx, joint in enumerate(body["joints"]):
                 np_joints3d[jidx, :] = joint["x"], joint["y"], joint["z"]
                 np_joints2d[jidx, :] = joint["color_x"], joint["color_y"]
+
 
             bodies[body_id]["kps3d"].append(np_joints3d)
             bodies[body_id]["kps2d"].append(np_joints2d)

@@ -27,6 +27,12 @@ def create_args():
     parser.add_argument(
         "--log-path", default="", type=str, help="Where to save log"
     )
+    parser.add_argument(
+        "--eval-log-path",
+        default="",
+        type=str,
+        help="Where to save final evaluation log",
+    )
     # Dataset
     parser.add_argument(
         "--data-path", required=True, type=str, help="Path to dataset"
@@ -236,7 +242,7 @@ def main(args):
                 start_step=(e - 1) * steps_per_epoch + 1,
                 lr_schedule=lr_scheduler,
             )
-            valid_avg_loss, valid_acc = valid_one_epoch(
+            valid_avg_loss, valid_acc, _, _ = valid_one_epoch(
                 model=model,
                 loss_fn=loss_fn,
                 dataloader=valid_dataloader,
@@ -252,7 +258,7 @@ def main(args):
                     }
                 )
                 with open(args.log_path, "w", encoding="utf-8") as f:
-                    json.dump(log, f, ensure_ascii=False, indent=4)
+                    json.dump(log, f, ensure_ascii=False, indent=2)
             if args.save_best and len(args.save_best_path) > 0:
                 if valid_avg_loss < min_loss:
                     save_checkpoint(
@@ -275,13 +281,23 @@ def main(args):
                         min_loss,
                     )
 
-    valid_avg_loss, valid_acc = valid_one_epoch(
+    valid_avg_loss, valid_acc, preds, labels = valid_one_epoch(
         model=model,
         loss_fn=loss_fn,
         dataloader=valid_dataloader,
         device=args.device,
     )
+
     print(f"Evalution accuracy: {valid_acc}")
+    if len(args.eval_log_path) > 0:
+        os.makedirs(os.path.dirname(args.eval_log_path), exist_ok=True)
+        with open(args.eval_log_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {"preds": preds, "labels": labels},
+                f,
+                ensure_ascii=False,
+                indent=2,
+            )
 
 
 if __name__ == "__main__":
