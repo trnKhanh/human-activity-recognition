@@ -77,7 +77,5 @@ class NTUDataset(Dataset):
             sample = self.augment(sample)
         
         sample = torch.from_numpy(sample)
-        M, T, V, C = sample.size()
-        sample = sample.permute(3, 1, 2, 0).contiguous()
-        sample = sample.type(torch.get_default_dtype())
+
         return sample, label

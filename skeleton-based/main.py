@@ -86,21 +86,27 @@ def create_args():
         "--save-path", default="", type=str, help="Where to save checkpoint"
     )
     parser.add_argument(
+        "--save-freq",
+        default=10,
+        type=int,
+        help="How often to save checkpoint (default: 10)",
+    )
+    parser.add_argument(
         "--save-best",
         action="store_true",
         help="Whether to save best checkpoint",
+    )
+    parser.add_argument(
+        "--save-best-path",
+        default="",
+        type=str,
+        help="Where to save checkpoint",
     )
     parser.add_argument(
         "--resume", default="", type=str, help="Resume training from checkpoint"
     )
     parser.add_argument(
         "--load-ckpt", default="", type=str, help="Load checkpoint"
-    )
-    parser.add_argument(
-        "--save-freq",
-        default=10,
-        type=int,
-        help="How often to save checkpoint (default: 10)",
     )
     # Model
     parser.add_argument(
@@ -198,10 +204,14 @@ def main(args):
         else:
             model.load_state_dict(state_dict)
 
+    min_loss = np.Inf
+
     if len(args.resume) > 0 and os.path.isfile(args.resume):
-        args.start_epoch = load_checkpoint(
+        args.start_epoch, min_loss = load_checkpoint(
             args.resume, model, optimizer, lr_scheduler
         )
+        print(f"Resuming from epoch {args.start_epoch}, min_loss={min_loss}")
+
     loss_fn = nn.CrossEntropyLoss()
     print("=" * os.get_terminal_size().columns)
     print("Model")
@@ -215,7 +225,6 @@ def main(args):
             os.makedirs(os.path.dirname(args.log_path), exist_ok=True)
         if len(args.save_path) > 0:
             os.makedirs(os.path.dirname(args.save_path), exist_ok=True)
-        min_loss = np.Inf
         for e in range(args.start_epoch, args.epochs + 1):
             train_avg_loss, train_loss_values = train_one_epoch(
                 epoch=e,
@@ -244,19 +253,27 @@ def main(args):
                 )
                 with open(args.log_path, "w", encoding="utf-8") as f:
                     json.dump(log, f, ensure_ascii=False, indent=4)
-            if len(args.save_path) > 0:
-                if args.save_best:
-                    if valid_avg_loss < min_loss:
-                        save_checkpoint(
-                            args.save_path, model, optimizer, lr_scheduler, e
-                        )
-                else:
-                    if (e % args.save_freq) == 0 or e == args.epochs:
-                        save_checkpoint(
-                            args.save_path, model, optimizer, lr_scheduler, e
-                        )
-
+            if args.save_best and len(args.save_best_path) > 0:
+                if valid_avg_loss < min_loss:
+                    save_checkpoint(
+                        args.save_best_path,
+                        model,
+                        optimizer,
+                        lr_scheduler,
+                        e,
+                        valid_avg_loss,
+                    )
             min_loss = min(min_loss, valid_avg_loss)
+            if len(args.save_path) > 0:
+                if (e % args.save_freq) == 0 or e == args.epochs:
+                    save_checkpoint(
+                        args.save_path,
+                        model,
+                        optimizer,
+                        lr_scheduler,
+                        e,
+                        min_loss,
+                    )
 
     valid_avg_loss, valid_acc = valid_one_epoch(
         model=model,

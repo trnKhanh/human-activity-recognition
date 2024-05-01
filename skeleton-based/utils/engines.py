@@ -18,35 +18,42 @@ def train_one_epoch(
     start_step: int,
     lr_schedule=None,
 ):
-    print("-" * os.get_terminal_size().columns)
-    print(f"Epoch {epoch}: ")
     model.train()
     cur_step = start_step
-    if lr_schedule is not None:
-        print(f"  Start lr: {lr_schedule(cur_step):.6f}")
+
     loss_values = []
-    for samples, labels in tqdm(dataloader):
-        if lr_schedule is not None:
-            for param_group in optimizer.param_groups:
-                param_group["lr"] = lr_schedule(cur_step)
+    correct_count = 0
+    total_count = 0
+    with tqdm(dataloader, unit="batch") as tepoch:
+        tepoch.set_description(f"Epoch {epoch}")
+        for samples, labels in tepoch:
+            if lr_schedule is not None:
+                for param_group in optimizer.param_groups:
+                    param_group["lr"] = lr_schedule(cur_step)
 
-        samples = samples.to(device)
-        labels = labels.to(device)
+            samples = samples.to(device)
+            labels = labels.to(device)
 
-        preds = model(samples)
-        optimizer.zero_grad()
-        loss = loss_fn(preds, labels)
-        loss.backward()
-        optimizer.step()
+            preds = model(samples)
+            optimizer.zero_grad()
+            loss = loss_fn(preds, labels)
+            loss.backward()
+            optimizer.step()
 
-        loss_values.append(loss.to("cpu").item())
-        cur_step += 1
+            loss_values.append(loss.item())
 
-    if lr_schedule is not None:
-        print(f"  End lr: {lr_schedule(cur_step - 1):.6f}")
-    avg_loss = np.mean(np.array(loss_values))
-    print(f"  Avg Loss: {avg_loss:.6f}")
-    print("-" * os.get_terminal_size().columns)
+            with torch.no_grad():
+                pred_classes = torch.argmax(preds, dim=1)
+                correct_count += (pred_classes == labels).sum().item()
+                total_count += len(labels)
+                tepoch.set_postfix(
+                    lr=optimizer.param_groups[0]["lr"],
+                    avg_loss=np.mean(np.array(loss_values)),
+                    acc=correct_count / total_count,
+                )
+                cur_step += 1
+
+        avg_loss = sum(loss_values) / len(loss_values)
 
     return avg_loss, loss_values
 
@@ -54,32 +61,32 @@ def train_one_epoch(
 def valid_one_epoch(
     model: nn.Module, loss_fn, dataloader: DataLoader, device: torch.device
 ):
-
-    print("- " * (os.get_terminal_size().columns // 2))
-    print(f"Validation")
     model.eval()
 
     loss_values = []
     correct_count = 0
     total_count = 0
     with torch.no_grad():
-        for samples, labels in tqdm(dataloader):
-            samples = samples.to(device)
-            labels = labels.to(device)
+        with tqdm(dataloader, unit="batch") as tepoch:
+            tepoch.set_description("Validation")
+            for samples, labels in tepoch:
+                samples = samples.to(device)
+                labels = labels.to(device)
 
-            preds = model(samples)
-            loss = loss_fn(preds, labels)
+                preds = model(samples)
+                loss = loss_fn(preds, labels)
 
-            pred_classes = torch.argmax(preds, dim=-1)
-            correct_count += torch.sum(pred_classes == labels).to("cpu").item()
-            total_count += len(preds)
+                loss_values.append(loss.item())
 
-            loss_values.append(loss.to("cpu").item())
+                pred_classes = torch.argmax(preds, dim=1)
+                correct_count += (pred_classes == labels).sum().item()
+                total_count += len(labels)
+                tepoch.set_postfix(
+                    avg_loss=np.mean(np.array(loss_values)),
+                    acc=correct_count / total_count,
+                )
 
-        avg_loss = np.mean(np.array(loss_values))
-        acc = correct_count / total_count
-        print(f"  Avg Loss: {avg_loss:.6f}")
-        print(f"  Accuracy: {acc:.6f}")
-        print("- " * (os.get_terminal_size().columns // 2))
+            avg_loss = sum(loss_values) / len(loss_values)
+            acc = correct_count / total_count
 
     return avg_loss, acc

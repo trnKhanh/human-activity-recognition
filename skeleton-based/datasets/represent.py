@@ -29,6 +29,9 @@ def create_args():
     parser.add_argument(
         "--output-dir", required=True, type=str, help="Where to save videos"
     )
+    parser.add_argument(
+        "--classes-path", required=True, type=str, help="Path to classes file"
+    )
 
     return parser.parse_args()
 
@@ -61,18 +64,30 @@ ADJ = [
 ]
 
 
+def load_classes(args):
+    classes = dict()
+    with open(args.classes_path, "r") as f:
+        lines = f.readlines()
+        for line in lines:
+            id, name = line.split(".")[:2]
+            classes[int(id)] = name.strip().replace(" ", "-").replace("/", "|")
+    return classes
+
+
 def main(args):
     if not os.path.isdir(args.data_dir):
         raise RuntimeError(f"Directory {args.data_dir} not found")
     if len(args.extra_data_dir) > 0 and not os.path.isdir(args.extra_data_dir):
         raise RuntimeError(f"Directory {args.extra_data_dir} not found")
     os.makedirs(args.output_dir, exist_ok=True)
+    classes = load_classes(args)
 
     width, height = 1920, 1080
+    fps = 20
     exists = dict()
     for file in os.scandir(args.data_dir):
         tmp = file.name.find("A")
-        action_id = file.name[tmp + 1 : tmp + 4]
+        action_id = int(file.name[tmp + 1 : tmp + 4])
         if action_id in exists:
             continue
         exists[action_id] = 1
@@ -82,16 +97,19 @@ def main(args):
         data_2d = np.load(path_2d, allow_pickle=True)
         fourcc = cv.VideoWriter_fourcc(*"mp4v")
         video = cv.VideoWriter(
-            os.path.join(args.output_dir, f"{action_id}.mp4"),
+            os.path.join(
+                args.output_dir, f"{action_id}_{classes[action_id]}.mp4"
+            ),
             fourcc,
-            20,
+            fps,
             (width, height * 2),
         )
-        M, F, J, C = data.shape
+
+        C, T, V, M = data.shape
         print(action_id)
         print(data.shape)
         print(data_2d.shape)
-        for f in range(F):
+        for f in range(T):
             frame = np.zeros((height * 2, width, 3), np.uint8)
             cv.line(frame, (0, height), (width, height), (0, 255, 0))
             for m in range(M):
@@ -99,12 +117,12 @@ def main(args):
                     cv.line(
                         frame,
                         (
-                            int(500 * data[m, f, u - 1, 0] + 960),
-                            int(-500 * data[m, f, u - 1, 1] + 540),
+                            int(500 * data[0, f, u - 1, m] + 960),
+                            int(-500 * data[1, f, u - 1, m] + 540),
                         ),
                         (
-                            int(500 * data[m, f, v - 1, 0] + 960),
-                            int(-500 * data[m, f, v - 1, 1] + 540),
+                            int(500 * data[0, f, v - 1, m] + 960),
+                            int(-500 * data[1, f, v - 1, m] + 540),
                         ),
                         (0, 0, 255),
                         2,
@@ -112,12 +130,12 @@ def main(args):
                     cv.line(
                         frame,
                         (
-                            int(data_2d[m, f, u - 1, 0]),
-                            int(data_2d[m, f, u - 1, 1] + height),
+                            int(data_2d[0, f, u - 1, m]),
+                            int(data_2d[1, f, u - 1, m] + height),
                         ),
                         (
-                            int(data_2d[m, f, v - 1, 0]),
-                            int(data_2d[m, f, v - 1, 1] + height),
+                            int(data_2d[0, f, v - 1, m]),
+                            int(data_2d[1, f, v - 1, m] + height),
                         ),
                         (0, 0, 255),
                         2,
@@ -125,28 +143,30 @@ def main(args):
             video.write(frame)
         video.release()
     if len(args.extra_data_dir) > 0:
-        for file in os.scandir(args.extra_data_dir):
+        for file in os.scandir(args.data_dir):
             tmp = file.name.find("A")
-            action_id = file.name[tmp + 1 : tmp + 4]
+            action_id = int(file.name[tmp + 1 : tmp + 4])
             if action_id in exists:
                 continue
             exists[action_id] = 1
 
             data = np.load(file.path, allow_pickle=True)
-            path_2d = os.path.join(args.extra_data_dir_2d, file.name)
+            path_2d = os.path.join(args.data_dir_2d, file.name)
             data_2d = np.load(path_2d, allow_pickle=True)
             fourcc = cv.VideoWriter_fourcc(*"mp4v")
             video = cv.VideoWriter(
-                os.path.join(args.output_dir, f"{action_id}.mp4"),
+                os.path.join(
+                    args.output_dir, f"{action_id}_{classes[action_id]}.mp4"
+                ),
                 fourcc,
-                20,
+                fps,
                 (width, height * 2),
             )
-            M, F, J, C = data.shape
+            C, T, V, M = data.shape
             print(action_id)
             print(data.shape)
             print(data_2d.shape)
-            for f in range(F):
+            for f in range(T):
                 frame = np.zeros((height * 2, width, 3), np.uint8)
                 cv.line(frame, (0, height), (width, height), (0, 255, 0))
                 for m in range(M):
@@ -154,29 +174,25 @@ def main(args):
                         cv.line(
                             frame,
                             (
-                                int(500 * data[m, f, u - 1, 0] + 960),
-                                int(-500 * data[m, f, u - 1, 1] + 540),
+                                int(500 * data[0, f, u - 1, m] + 960),
+                                int(-500 * data[1, f, u - 1, m] + 540),
                             ),
                             (
-                                int(500 * data[m, f, v - 1, 0] + 960),
-                                int(-500 * data[m, f, v - 1, 1] + 540),
+                                int(500 * data[0, f, v - 1, m] + 960),
+                                int(-500 * data[1, f, v - 1, m] + 540),
                             ),
                             (0, 0, 255),
                             2,
                         )
-                        if np.isnan(np.sum(data_2d[m, f, u - 1])):
-                            continue
-                        if np.isnan(np.sum(data_2d[m, f, v - 1])):
-                            continue
                         cv.line(
                             frame,
                             (
-                                int(data_2d[m, f, u - 1, 0]),
-                                int(data_2d[m, f, u - 1, 1] + height),
+                                int(data_2d[0, f, u - 1, m]),
+                                int(data_2d[1, f, u - 1, m] + height),
                             ),
                             (
-                                int(data_2d[m, f, v - 1, 0]),
-                                int(data_2d[m, f, v - 1, 1] + height),
+                                int(data_2d[0, f, v - 1, m]),
+                                int(data_2d[1, f, v - 1, m] + height),
                             ),
                             (0, 0, 255),
                             2,

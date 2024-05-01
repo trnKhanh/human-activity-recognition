@@ -22,6 +22,24 @@ def create_args():
         action="store_true",
         help="Whether to overwrite existed file",
     )
+    parser.add_argument(
+        "--max-frames",
+        default=300,
+        type=int,
+        help="Max frames (default: 300)",
+    )
+    parser.add_argument(
+        "--max-bodies",
+        default=2,
+        type=int,
+        help="Max bodies (default: 2)",
+    )
+    parser.add_argument(
+        "--num-joints",
+        default=25,
+        type=int,
+        help="Number of joints (default: 25)",
+    )
 
     return parser.parse_args()
 
@@ -49,17 +67,22 @@ def main(args):
 
             data = load_skeleton_data(file.path)
 
-            np_data3d, np_data2d = convert_to_numpy(data)
+            np_data3d, np_data2d = convert_to_numpy(
+                data, args.max_frames, args.max_bodies, args.num_joints
+            )
             np.save(save_path, np_data3d)
 
             save_2d_path = os.path.join(args.save_dir + "_2d", save_name)
             np.save(save_2d_path, np_data2d)
 
 
-def convert_to_numpy(data, max_frame=300,num_bodies=2, num_joints=25):
-    assert max_frame >= data["num_frames"]
-    np_data3d = np.zeros((num_bodies, max_frame, num_joints, 3))
-    np_data2d = np.zeros((num_bodies, max_frame, num_joints, 2))
+def convert_to_numpy(data, max_frame=300, num_bodies=2, num_joints=25):
+    np_data3d = np.zeros(
+        (num_bodies, 300, num_joints, 3), dtype=np.float32
+    )
+    np_data2d = np.zeros(
+        (num_bodies, 300, num_joints, 2), dtype=np.float32
+    )
 
     bodies = dict()
 
@@ -97,7 +120,32 @@ def convert_to_numpy(data, max_frame=300,num_bodies=2, num_joints=25):
         np_data3d[i, s:e, :, :] = bodies[i]["kps3d"]
         np_data2d[i, s:e, :, :] = bodies[i]["kps2d"]
 
+    np_data3d = compress(np_data3d, max_frame)
+    np_data2d = compress(np_data2d, max_frame)
+
+    np_data3d = np_data3d.transpose(3, 1, 2, 0)
+    np_data2d = np_data2d.transpose(3, 1, 2, 0)
+
     return np_data3d, np_data2d
+
+
+def compress(data: np.ndarray, new_length: int):
+    M, T, V, C = data.shape
+
+    rate = T / new_length
+    new_data = np.zeros((M, new_length, V, C), dtype=np.float32)
+
+    i = 0
+    cur_frame = 0
+    if rate >= 1:
+        while cur_frame <= T and i < new_length:
+            new_data[:, i, :, :] = data[:, int(np.round(cur_frame)), :, :]
+            i += 1
+            cur_frame += rate
+    else:
+        new_data[:, :T, :, :] = data
+
+    return new_data
 
 
 def denoise(bodies):
