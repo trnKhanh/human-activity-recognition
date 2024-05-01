@@ -84,8 +84,8 @@ def valid_one_epoch(
                 pred_classes = torch.argmax(preds, dim=1)
                 correct_count += (pred_classes == labels).sum().item()
 
-                preds_arr.extend(pred_classes)
-                labels_arr.extend(labels)
+                preds_arr.extend(pred_classes.tolist())
+                labels_arr.extend(labels.tolist())
 
                 total_count += len(labels)
                 tepoch.set_postfix(
