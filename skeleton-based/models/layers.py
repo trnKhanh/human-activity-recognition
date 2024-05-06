@@ -105,20 +105,19 @@ class GCNUnit(nn.Module):
         self.in_channels = in_channels
         self.out_channels = (out_channels,)
 
-        self.A = A.clone()
+        # self.A = A.clone()
         self.adaptive = adaptive
-        if adaptive is None:
-            self.register_buffer("A", self.A)
+        self.register_buffer("A", A.clone())
 
         if adaptive == "init":
-            self.A = nn.Parameter(A.clone())
+            self.PA = nn.Parameter(A.clone())
         elif adaptive == "offset":
             self.PA = nn.Parameter(torch.zeros(A.size()))
             nn.init.uniform_(self.PA, -1e-6, 1e-6)
         elif adaptive == "importance":
             self.PA = nn.Parameter(torch.ones(A.size()))
         elif adaptive == "data-driven":
-            self.A = nn.Parameter(A.clone())
+            self.PA = nn.Parameter(A.clone())
             self.alpha = nn.Parameter(torch.zeros(1))
 
             self.avg_pool = nn.AdaptiveAvgPool2d((1, None))
@@ -131,7 +130,9 @@ class GCNUnit(nn.Module):
     def forward(self, x):
         N, C, T, V = x.size()
 
-        if self.adaptive == "offset":
+        if self.adaptive == "init":
+            A = self.PA
+        elif self.adaptive == "offset":
             A = self.A + self.PA
         elif self.adaptive == "importance":
             A = self.A * self.PA
@@ -141,7 +142,7 @@ class GCNUnit(nn.Module):
             A2 = torch.squeeze(self.convA2(y), dim=2)
             A1 = A1.permute(0, 2, 1).contiguous()  # N, C, V => N, V, C
             A_data = torch.softmax(torch.matmul(A1, A2), dim=2)
-            A = self.A + self.alpha * A_data
+            A = self.PA + self.alpha * A_data
         else:
             A = self.A
 
