@@ -76,10 +76,16 @@ def create_args():
         type=int,
         help="Warm up epochs (default: 40)",
     )
+    parser.add_argument(
+        "--max-epochs",
+        default=80,
+        type=int,
+        help="Max epochs in cosine schedule (default: 40)",
+    )
     # Training
     parser.add_argument(
         "--epochs",
-        default=1000,
+        default=100,
         type=int,
         help="Epochs to train (defult: 1000)",
     )
@@ -194,9 +200,7 @@ def main(args):
 
     steps_per_epoch = len(train_dataset) // args.batch_size
     warmup_steps = args.warmup_epochs * steps_per_epoch
-    max_steps = (
-        args.epochs - args.start_epoch + 1
-    ) * steps_per_epoch - warmup_steps
+    max_steps = (args.max_epochs) * steps_per_epoch - warmup_steps
     lr_scheduler = CosineSchedule(
         warmup_steps=warmup_steps,
         base_lr=args.base_lr,

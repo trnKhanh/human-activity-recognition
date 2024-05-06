@@ -263,7 +263,7 @@ class Block(nn.Module):
         )
         if not residual:
             self.t_res = lambda x: 0
-        elif in_channels == out_channels and stride == 1:
+        elif out_channels == out_channels and stride == 1:
             self.t_res = lambda x: x
         else:
             self.t_res = nn.Sequential(
