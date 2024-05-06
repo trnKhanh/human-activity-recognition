@@ -2,7 +2,7 @@ import numpy as np
 import os
 from tqdm import tqdm
 from argparse import ArgumentParser
-from augment import moving_augment
+from augment import moving_augment, UniSampling
 import cv2 as cv
 
 
@@ -84,7 +84,7 @@ def main(args):
     classes = load_classes(args)
 
     width, height = 1920, 1080
-    fps = 10
+    fps = 24
     exists = dict()
     for file in os.scandir(args.data_dir):
         tmp = file.name.find("A")
@@ -106,9 +106,10 @@ def main(args):
             (width, height * 2),
         )
 
+        aug = UniSampling(100)
+        data = aug(data)
         C, T, V, M = data.shape
-        data = moving_augment(data)
-        # data_2d = moving_augment(data_2d)
+
         print(action_id)
         print(data.shape)
         print(data_2d.shape)
@@ -145,6 +146,7 @@ def main(args):
                     )
             video.write(frame)
         video.release()
+
     if len(args.extra_data_dir) > 0:
         for file in os.scandir(args.extra_data_dir):
             tmp = file.name.find("A")

@@ -8,7 +8,6 @@ from datasets.NTUDataset import NTUDataset
 from models.net import STGCN
 from models.optims import CosineSchedule
 from models.utils import build_A
-from utils.graph import get_ntu_graph_args
 from utils.engines import train_one_epoch, valid_one_epoch
 from utils.checkpoints import load_checkpoint, save_checkpoint
 
@@ -106,7 +105,13 @@ def create_args():
         "--save-best-path",
         default="",
         type=str,
-        help="Where to save checkpoint",
+        help="Where to save best checkpoint",
+    )
+    parser.add_argument(
+        "--save-best-acc-path",
+        default="",
+        type=str,
+        help="Where to save highest accuracy checkpoint",
     )
     parser.add_argument(
         "--resume", default="", type=str, help="Resume training from checkpoint"
@@ -177,16 +182,11 @@ def main(args):
     print(f"  Valid size: {len(valid_dataset)} samples")
     print("=" * os.get_terminal_size().columns)
 
-    graph_args = get_ntu_graph_args("spatial")
-    A = build_A(graph_args)
-    A = A.to(args.device)
-
     model = STGCN(
         3,
         args.num_classes,
-        A=A,
+        act_layer=nn.ReLU,
         dropout_rate=args.dropout_rate,
-        importance=args.importance,
     )
     model.to(args.device)
     num_params = sum([p.numel() for p in model.parameters()])
@@ -211,6 +211,7 @@ def main(args):
             model.load_state_dict(state_dict)
 
     min_loss = np.Inf
+    max_acc = -np.Inf
 
     if len(args.resume) > 0 and os.path.isfile(args.resume):
         args.start_epoch, min_loss = load_checkpoint(
@@ -259,8 +260,10 @@ def main(args):
                 )
                 with open(args.log_path, "w", encoding="utf-8") as f:
                     json.dump(log, f, ensure_ascii=False, indent=2)
-            if args.save_best and len(args.save_best_path) > 0:
-                if valid_avg_loss < min_loss:
+            if args.save_best and (
+                len(args.save_best_path) > 0 or len(args.save_best_acc_path) > 0
+            ):
+                if valid_avg_loss < min_loss and len(args.save_best_path) > 0:
                     save_checkpoint(
                         args.save_best_path,
                         model,
@@ -269,7 +272,19 @@ def main(args):
                         e,
                         valid_avg_loss,
                     )
+
+                if valid_acc > max_acc and len(args.save_best_acc_path) > 0:
+                    save_checkpoint(
+                        args.save_best_acc_path,
+                        model,
+                        optimizer,
+                        lr_scheduler,
+                        e,
+                        valid_avg_loss,
+                    )
             min_loss = min(min_loss, valid_avg_loss)
+            max_acc = max(max_acc, valid_acc)
+
             if len(args.save_path) > 0:
                 if (e % args.save_freq) == 0 or e == args.epochs:
                     save_checkpoint(

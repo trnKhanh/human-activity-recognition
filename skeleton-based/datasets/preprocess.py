@@ -76,8 +76,56 @@ def main(args):
             np.save(save_2d_path, np_data2d)
 
 
+def dfs(u, edges, par):
+    for e in edges:
+        if u == e[0] - 1:
+            v = e[1] - 1
+        elif u == e[1] - 1:
+            v = e[0] - 1
+        else:
+            continue
+        if par[v] != -1:
+            continue
+
+        par[v] = u
+        dfs(v, edges, par)
+
+
+ADJ = [
+    (1, 2),
+    (2, 21),
+    (3, 21),
+    (4, 3),
+    (5, 21),
+    (6, 5),
+    (7, 6),
+    (8, 7),
+    (9, 21),
+    (10, 9),
+    (11, 10),
+    (12, 11),
+    (13, 1),
+    (14, 13),
+    (15, 14),
+    (16, 15),
+    (17, 1),
+    (18, 17),
+    (19, 18),
+    (20, 19),
+    (22, 23),
+    (23, 8),
+    (24, 25),
+    (25, 12),
+]
+
+
 def convert_to_numpy(data, max_frame=300, num_bodies=2, num_joints=25):
-    np_data3d = np.zeros((num_bodies, 300, num_joints, 3), dtype=np.float32)
+    par = [-1 for _ in range(num_joints)]
+    par[20] = -2
+    dfs(20, ADJ, par)
+    np_data3d = np.zeros(
+        (num_bodies, 300, num_joints, 3 + 3 + 3), dtype=np.float32
+    )
     np_data2d = np.zeros((num_bodies, 300, num_joints, 2), dtype=np.float32)
 
     bodies = dict()
@@ -98,7 +146,6 @@ def convert_to_numpy(data, max_frame=300, num_bodies=2, num_joints=25):
                 np_joints3d[jidx, :] = joint["x"], joint["y"], joint["z"]
                 np_joints2d[jidx, :] = joint["color_x"], joint["color_y"]
 
-
             bodies[body_id]["kps3d"].append(np_joints3d)
             bodies[body_id]["kps2d"].append(np_joints2d)
 
@@ -114,8 +161,26 @@ def convert_to_numpy(data, max_frame=300, num_bodies=2, num_joints=25):
         s = bodies[i]["start"]
         e = bodies[i]["start"] + bodies[i]["kps3d"].shape[0]
         assert bodies[i]["kps3d"].shape[0] == bodies[i]["kps2d"].shape[0]
-        np_data3d[i, s:e, :, :] = bodies[i]["kps3d"]
-        np_data2d[i, s:e, :, :] = bodies[i]["kps2d"]
+        bones = np.zeros((e - s, num_joints, 3))
+        motion = np.zeros((e - s, num_joints, 3))
+        assert bones.shape == motion.shape
+        assert bones.shape == bodies[i]["kps3d"].shape
+        for f in range(e - s):
+            for j in range(num_joints):
+                if par[j] != -2:
+                    bones[f, j, :] = (
+                        bodies[i]["kps3d"][f, j, :]
+                        - bodies[i]["kps3d"][f, par[j], :]
+                    )
+                if f != 0:
+                    motion[f, j, :] = (
+                        bodies[i]["kps3d"][f, j, :]
+                        - bodies[i]["kps3d"][f - 1, j, :]
+                    )
+        np_data3d[i, s:e, :, :3] = bodies[i]["kps3d"]
+        np_data3d[i, s:e, :, 3:6] = bones
+        np_data3d[i, s:e, :, 6:9] = motion
+        np_data2d[i, s:e, :, :2] = bodies[i]["kps2d"]
 
     np_data3d = compress(np_data3d, max_frame)
     np_data2d = compress(np_data2d, max_frame)
@@ -128,6 +193,8 @@ def convert_to_numpy(data, max_frame=300, num_bodies=2, num_joints=25):
 
 def compress(data: np.ndarray, new_length: int):
     M, T, V, C = data.shape
+    if T == new_length:
+        return data
 
     rate = T / new_length
     new_data = np.zeros((M, new_length, V, C), dtype=np.float32)

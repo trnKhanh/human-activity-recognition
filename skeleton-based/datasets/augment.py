@@ -25,3 +25,22 @@ def moving_augment(
 
     return aug_sample
 
+
+class UniSampling(object):
+    def __init__(self, new_length: int):
+        self.new_length = new_length
+
+    def __call__(self, sample: np.ndarray, train=True):
+        C, T, V, M = sample.shape
+
+        chunk_size = T / self.new_length
+        aug_ids = np.linspace(0, T, self.new_length + 1)[:-1]
+        if train:
+            choosen = np.random.rand(self.new_length) * (chunk_size - 1)
+        else:
+            choosen = np.zeros(self.new_length)
+        aug_ids = np.round(choosen + aug_ids).astype(np.int32)
+
+        aug_sample = sample[:, aug_ids, :, :]
+
+        return aug_sample
