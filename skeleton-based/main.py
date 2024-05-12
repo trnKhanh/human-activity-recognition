@@ -20,6 +20,7 @@ def create_args():
     parser = ArgumentParser()
 
     parser.add_argument("--train", action="store_true", help="Whether to train")
+    parser.add_argument("--valid", action="store_true", help="Whether to validate")
     parser.add_argument(
         "--device", default="cpu", type=str, help="Device to use (default: cpu)"
     )
@@ -208,7 +209,7 @@ def main(args):
         max_steps=max_steps,
     )
     if len(args.load_ckpt) > 0 and os.path.isfile(args.load_ckpt):
-        state_dict = torch.load(args.load_ckpt)
+        state_dict = torch.load(args.load_ckpt, map_location=args.device)
         if "model" in state_dict:
             model.load_state_dict(state_dict["model"])
         else:
@@ -300,23 +301,23 @@ def main(args):
                         min_loss,
                     )
 
-    valid_avg_loss, valid_acc, preds, labels = valid_one_epoch(
-        model=model,
-        loss_fn=loss_fn,
-        dataloader=valid_dataloader,
-        device=args.device,
-    )
-
-    print(f"Evalution accuracy: {valid_acc}")
-    if len(args.eval_log_path) > 0:
-        os.makedirs(os.path.dirname(args.eval_log_path), exist_ok=True)
-        with open(args.eval_log_path, "w", encoding="utf-8") as f:
-            json.dump(
-                {"preds": preds, "labels": labels},
-                f,
-                ensure_ascii=False,
-                indent=2,
-            )
+    if args.valid:
+        valid_avg_loss, valid_acc, preds, labels = valid_one_epoch(
+            model=model,
+            loss_fn=loss_fn,
+            dataloader=valid_dataloader,
+            device=args.device,
+        )
+        print(f"Evalution accuracy: {valid_acc}")
+        if len(args.eval_log_path) > 0:
+            os.makedirs(os.path.dirname(args.eval_log_path), exist_ok=True)
+            with open(args.eval_log_path, "w", encoding="utf-8") as f:
+                json.dump(
+                    {"preds": preds, "labels": labels},
+                    f,
+                    ensure_ascii=False,
+                    indent=2,
+                )
 
 
 if __name__ == "__main__":

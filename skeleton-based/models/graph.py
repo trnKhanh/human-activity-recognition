@@ -31,29 +31,111 @@ class NTUGraph(object):
             (25, 12),
         ]
         self.center = 20
-        self.depth = [-1 for _ in range(25)]
-        self.depth[self.center] = 0
-        self._compute_depth(self.center)
-        self.max_depth = max(self.depth)
         self.A = torch.eye(25)
+        self.adj = dict()
         for u, v in self.edges:
             self.A[u - 1][v - 1] = 1
             self.A[v - 1][u - 1] = 1
 
-    def _compute_depth(self, u):
-        for e in self.edges:
-            if e[0] - 1 == u:
-                v = e[1] - 1
-            elif e[1] - 1 == u:
-                v = e[0] - 1
-            else:
-                continue
+            if u - 1 not in self.adj:
+                self.adj[u - 1] = []
+            if v - 1 not in self.adj:
+                self.adj[v - 1] = []
 
-            if self.depth[v] != -1:
-                continue
-            self.depth[v] = self.depth[u] + 1
+            self.adj[u - 1].append(v - 1)
+            self.adj[v - 1].append(u - 1)
 
-            self._compute_depth(v)
+        self.depth = [-1 for _ in range(25)]
+        self.depth[self.center] = 0
+        self._compute_depth(self.center, self.depth, self.adj)
+        self.max_depth = max(self.depth)
+
+        self.DA = [[self.A.clone(), self.A.clone(), self.center]]
+        while True:
+            MA, DA, newc = self.get_stride_A(
+                self.DA[-1][1],
+                self.DA[-1][2],
+                stride=2,
+                normalize=False,
+            )
+            if DA.size(0) == 1:
+                break
+            self.DA.append([MA, DA, newc])
+
+    def _compute_depth(self, u, depth, adj):
+        for v in adj[u]:
+            if depth[v] != -1:
+                continue
+            depth[v] = depth[u] + 1
+            self._compute_depth(v, depth, adj)
+
+    def _dfs_stride(self, u, depth, adj, newadj, stride=1):
+        if depth[u] % stride != 0:
+            joints = []
+            for v in adj[u]:
+                if depth[v] <= depth[u]:
+                    continue
+                joints.extend(self._dfs_stride(v, depth, adj, newadj, stride))
+            return joints
+        joints = []
+        for v in adj[u]:
+            if depth[v] <= depth[u]:
+                continue
+            joints.extend(self._dfs_stride(v, depth, adj, newadj, stride))
+        for v in joints:
+            if u not in newadj:
+                newadj[u] = []
+            newadj[u].append(v)
+
+            if v not in newadj:
+                newadj[v] = []
+            newadj[v].append(u)
+
+        return [u]
+
+    def get_decompose(self, index):
+        if index >= len(self.DA):
+            raise ValueError(f"{index} is out of bound for NTUGraph.DA")
+        return self.normalize_adj(self.DA[index][0]).unsqueeze(
+            0
+        ), self.normalize_adj(self.DA[index][1]).unsqueeze(0)
+
+    def get_stride_A(self, A, center, stride=1, normalize=True):
+        assert A.size(0) == A.size(1)
+        adj = dict()
+        for u in range(A.size(0)):
+            for v in range(A.size(1)):
+                if A[u][v] == 1:
+                    if u not in adj:
+                        adj[u] = []
+                    adj[u].append(v)
+        depth = [-1 for _ in range(A.size(0))]
+        depth[center] = 0
+        self._compute_depth(center, depth, adj)
+
+        newadj = dict()
+        newadj[center] = []
+        self._dfs_stride(center, depth, adj, newadj, stride)
+
+        MA = torch.zeros((len(adj), len(newadj)))
+        DA = torch.eye(len(newadj))
+        id_map = dict()
+        for id, u in enumerate(newadj.keys()):
+            id_map[u] = id
+        for u in newadj.keys():
+            for v in adj[u]:
+                MA[v][id_map[u]] = 1
+            MA[u][id_map[u]] = 1
+
+        for u in newadj.keys():
+            for v in newadj[u]:
+                DA[id_map[u]][id_map[v]] = 1
+
+        if normalize:
+            MA = self.normalize_adj(MA)
+            DA = self.normalize_adj(DA)
+
+        return MA, DA, id_map[center]
 
     def get_num_joints(self):
         return self.A.size(0)

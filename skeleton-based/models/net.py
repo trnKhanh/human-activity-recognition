@@ -20,33 +20,40 @@ class STGCN(nn.Module):
             in_channels * self.graph.get_num_joints()
         )
         layer_cfs = [
-            (in_channels, 64, 1),
-            (64, 64, 1),
-            (64, 64, 1),
-            (64, 64, 1),
-            (64, 128, 2),
-            (128, 128, 1),
-            (128, 128, 1),
-            (128, 256, 2),
-            (256, 256, 1),
-            (256, 256, 1),
+            (in_channels, 48, 1),
+            (48, 48, 1),
+            (48, 48, 1),
+            (48, 48, 1),
+            (48, 96, 2),
+            (96, 96, 1),
+            (96, 96, 1),
+            (96, 192, 2),
+            (192, 192, 1),
+            (192, 192, 1),
         ]
+        down_id = {
+            4: 1, 
+            7: 2,}
         self.blocks = nn.ModuleList()
+        A = self.graph.get_decompose(0)
         for i, cf in enumerate(layer_cfs):
+            if i in down_id:
+                A = self.graph.get_decompose(down_id[i])
+
             self.blocks.append(
                 Block(
                     cf[0],
                     cf[1],
-                    self.graph,
+                    A[0] if i in down_id else A[1],
                     stride=cf[2],
                     dropout_rate=dropout_rate,
-                    residual=(i > 0),
+                    residual=(i > 0 and i not in down_id),
                     act_layer=act_layer,
                     init_block=(i == 0),
                 )
             )
         self.avg_pool = nn.AdaptiveMaxPool2d((1, 1))
-        self.head = nn.Linear(256, num_classes)
+        self.head = nn.Linear(layer_cfs[-1][1], num_classes)
 
     def forward(self, x):
         N, C, T, V, M = x.size()

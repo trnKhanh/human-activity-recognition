@@ -99,7 +99,7 @@ class GCNUnit(nn.Module):
         out_channels: int,
         A,
         adaptive=None,
-        embed_coef: int = 4,
+        embed_coef: int = 1,
     ):
         super().__init__()
         self.in_channels = in_channels
@@ -183,12 +183,8 @@ class GCN(nn.Module):
             )
             self.branches.append(
                 nn.Sequential(
-                    nn.Conv2d(in_channels, branch_c, 1),
-                    nn.BatchNorm2d(branch_c),
-                    self.act,
-                    self.dropout,
                     GCNUnit(
-                        branch_c,
+                        in_channels,
                         branch_c,
                         A=cf[1],
                         adaptive=cf[0],
@@ -212,7 +208,7 @@ class Block(nn.Module):
         self,
         in_channels: int,
         out_channels: int,
-        graph,
+        A,
         stride: int = 1,
         dropout_rate: float = 0,
         residual: bool = True,
@@ -223,16 +219,9 @@ class Block(nn.Module):
         self.in_channels = in_channels
         self.out_channels = out_channels
 
-        if not init_block:
-            gcn_branch_cf = [
-                ("offset", graph.get_khop_concentric_adj()),
-                ("offset", graph.get_khop_eccentric_adj()),
-                ("data-driven", graph.get_adj()),
-            ]
-        else:
-            gcn_branch_cf = [
-                ("offset", graph.get_adj()),
-            ]
+        gcn_branch_cf = [
+            ("offset", A),
+        ]
 
         self.gcn = GCN(
             in_channels,
@@ -272,7 +261,9 @@ class Block(nn.Module):
             )
         self.t_norm = nn.BatchNorm2d(out_channels)
         self.act = act_layer()
-        self.dropout = nn.Dropout(dropout_rate) if dropout_rate > 0 else nn.Identity()
+        self.dropout = (
+            nn.Dropout(dropout_rate) if dropout_rate > 0 else nn.Identity()
+        )
 
     def forward(self, x):
         g_res = self.g_res(x)
