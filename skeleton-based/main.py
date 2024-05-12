@@ -20,7 +20,9 @@ def create_args():
     parser = ArgumentParser()
 
     parser.add_argument("--train", action="store_true", help="Whether to train")
-    parser.add_argument("--valid", action="store_true", help="Whether to validate")
+    parser.add_argument(
+        "--valid", action="store_true", help="Whether to validate"
+    )
     parser.add_argument(
         "--device", default="cpu", type=str, help="Device to use (default: cpu)"
     )
@@ -81,7 +83,7 @@ def create_args():
         "--max-epochs",
         default=80,
         type=int,
-        help="Max epochs in cosine schedule (default: 40)",
+        help="Max epochs in cosine schedule (default: 80)",
     )
     # Training
     parser.add_argument(
@@ -102,11 +104,6 @@ def create_args():
         default=10,
         type=int,
         help="How often to save checkpoint (default: 10)",
-    )
-    parser.add_argument(
-        "--save-best",
-        action="store_true",
-        help="Whether to save best checkpoint",
     )
     parser.add_argument(
         "--save-best-path",
@@ -265,28 +262,26 @@ def main(args):
                 )
                 with open(args.log_path, "w", encoding="utf-8") as f:
                     json.dump(log, f, ensure_ascii=False, indent=2)
-            if args.save_best and (
-                len(args.save_best_path) > 0 or len(args.save_best_acc_path) > 0
-            ):
-                if valid_avg_loss < min_loss and len(args.save_best_path) > 0:
-                    save_checkpoint(
-                        args.save_best_path,
-                        model,
-                        optimizer,
-                        lr_scheduler,
-                        e,
-                        valid_avg_loss,
-                    )
 
-                if valid_acc > max_acc and len(args.save_best_acc_path) > 0:
-                    save_checkpoint(
-                        args.save_best_acc_path,
-                        model,
-                        optimizer,
-                        lr_scheduler,
-                        e,
-                        valid_avg_loss,
-                    )
+            if valid_avg_loss < min_loss and len(args.save_best_path) > 0:
+                save_checkpoint(
+                    args.save_best_path,
+                    model,
+                    optimizer,
+                    lr_scheduler,
+                    e,
+                    valid_avg_loss,
+                )
+
+            if valid_acc > max_acc and len(args.save_best_acc_path) > 0:
+                save_checkpoint(
+                    args.save_best_acc_path,
+                    model,
+                    optimizer,
+                    lr_scheduler,
+                    e,
+                    valid_avg_loss,
+                )
             min_loss = min(min_loss, valid_avg_loss)
             max_acc = max(max_acc, valid_acc)
 
