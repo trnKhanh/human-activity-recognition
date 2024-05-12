@@ -35,10 +35,10 @@ class STGCN(nn.Module):
             4: 1, 
             7: 2,}
         self.blocks = nn.ModuleList()
-        A = self.graph.get_decompose(0)
+        A = self.graph.get_compose(0)
         for i, cf in enumerate(layer_cfs):
             if i in down_id:
-                A = self.graph.get_decompose(down_id[i])
+                A = self.graph.get_compose(down_id[i])
 
             self.blocks.append(
                 Block(

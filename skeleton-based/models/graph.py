@@ -93,12 +93,12 @@ class NTUGraph(object):
 
         return [u]
 
-    def get_decompose(self, index):
+    def get_compose(self, index):
         if index >= len(self.DA):
             raise ValueError(f"{index} is out of bound for NTUGraph.DA")
-        return self.normalize_adj(self.DA[index][0]).unsqueeze(
-            0
-        ), self.normalize_adj(self.DA[index][1]).unsqueeze(0)
+        return self.normalize_adj(self.DA[index][0]).unsqueeze(0), self.get_khop(
+            self.DA[index][1], True
+        )
 
     def get_stride_A(self, A, center, stride=1, normalize=True):
         assert A.size(0) == A.size(1)
@@ -130,6 +130,7 @@ class NTUGraph(object):
         for u in newadj.keys():
             for v in newadj[u]:
                 DA[id_map[u]][id_map[v]] = 1
+
 
         if normalize:
             MA = self.normalize_adj(MA)

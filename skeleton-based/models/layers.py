@@ -230,8 +230,6 @@ class Block(nn.Module):
 
         gcn_branch_cf = [
             ("offset", A),
-            ("init", A),
-            ("importance", A),
         ]
 
         self.gcn = GCN(
