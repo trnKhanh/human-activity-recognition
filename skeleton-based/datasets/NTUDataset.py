@@ -16,7 +16,7 @@ class NTUDataset(Dataset):
         length_t=100,
     ):
         super().__init__()
-        self.augment = UniSampling(length_t)
+        self.augment = None
         self.samples = {"train": [], "valid": []}
         self.labels = {"train": [], "valid": []}
         self.mode = mode

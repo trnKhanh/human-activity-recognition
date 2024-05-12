@@ -158,6 +158,7 @@ class GCN(nn.Module):
         in_channels: int,
         out_channels: int,
         branch_cf,
+        concat=False,
         dropout_rate: float = 0,
         act_layer=nn.ReLU,
     ):
@@ -172,9 +173,13 @@ class GCN(nn.Module):
         )
         self.act = act_layer() if act_layer is not None else nn.Identity()
 
-        self.branch_channels = out_channels // self.num_branches
-        self.rem_branch_channels = out_channels - self.branch_channels * (
-            self.num_branches - 1
+        self.branch_channels = (
+            out_channels // self.num_branches if concat else out_channels
+        )
+        self.rem_branch_channels = (
+            out_channels - self.branch_channels * (self.num_branches - 1)
+            if concat
+            else out_channels
         )
         self.branches = nn.ModuleList()
         for i, cf in enumerate(branch_cf):
@@ -191,6 +196,7 @@ class GCN(nn.Module):
                     ),
                 )
             )
+        self.concat = concat
 
     def forward(self, x):
         N, C, T, V = x.size()
@@ -199,7 +205,10 @@ class GCN(nn.Module):
         for branch in self.branches:
             branch_outs.append(branch(x))
 
-        y = torch.cat(branch_outs, dim=1)
+        if self.concat:
+            y = torch.cat(branch_outs, dim=1)
+        else:
+            y = torch.stack(branch_outs).sum(dim=0)
         return y
 
 
@@ -221,6 +230,8 @@ class Block(nn.Module):
 
         gcn_branch_cf = [
             ("offset", A),
+            ("init", A),
+            ("importance", A),
         ]
 
         self.gcn = GCN(
@@ -241,7 +252,7 @@ class Block(nn.Module):
             )
         self.g_norm = nn.BatchNorm2d(out_channels)
 
-        tcn_branch_cf = [(3, 1), (3, 2), (3, 3), (3, 4), ("max", 3), ("1x1")]
+        tcn_branch_cf = [(5, 1), (5, 2), ("max", 3), ("1x1")]
         self.tcn = TCN(
             out_channels,
             out_channels,
