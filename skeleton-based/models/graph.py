@@ -146,6 +146,11 @@ class NTUGraph(object):
             return self.normalize_adj(self.A.clone()).unsqueeze(0)
         else:
             return self.A.clone()
+    def get_partial_adj(self):
+        EA = self.get_eccentric_adj(True)
+        CA = self.get_eccentric_adj(True)
+        A = torch.eye(self.get_num_joints()).unsqueeze(0)
+        return torch.cat([EA, A, CA], dim=0)
 
     def get_khop(self, A, normalize=True):
         A_k = []

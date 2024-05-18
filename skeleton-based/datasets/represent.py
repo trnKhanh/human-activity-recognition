@@ -4,6 +4,7 @@ from tqdm import tqdm
 from argparse import ArgumentParser
 from augment import moving_augment, UniSampling
 import cv2 as cv
+from NTUDataset import NTUDataset
 
 
 def create_args():
@@ -11,9 +12,6 @@ def create_args():
 
     parser.add_argument(
         "--data-dir", required=True, type=str, help="Path to numpy data"
-    )
-    parser.add_argument(
-        "--data-dir-2d", required=True, type=str, help="Path to 2d numpy data"
     )
     parser.add_argument(
         "--extra-data-dir",
@@ -86,16 +84,21 @@ def main(args):
     width, height = 1920, 1080
     fps = 24
     exists = dict()
-    for file in os.scandir(args.data_dir):
-        tmp = file.name.find("A")
-        action_id = int(file.name[tmp + 1 : tmp + 4])
+    dataset = NTUDataset(
+        data_path=args.data_dir,
+        extra_data_path=args.extra_data_dir,
+        mode="train",
+        split="x-subject",
+        features="jbm",
+        length_t=64,
+    )
+    for i in range(len(dataset)):
+        data, action_id = dataset[i]
+        action_id += 1
         if action_id in exists:
             continue
         exists[action_id] = 1
 
-        data = np.load(file.path, allow_pickle=True)
-        path_2d = os.path.join(args.data_dir_2d, file.name)
-        data_2d = np.load(path_2d, allow_pickle=True)
         fourcc = cv.VideoWriter_fourcc(*"mp4v")
         video = cv.VideoWriter(
             os.path.join(
@@ -106,13 +109,10 @@ def main(args):
             (width, height * 2),
         )
 
-        aug = UniSampling(100)
-        data = aug(data)
         C, T, V, M = data.shape
 
         print(action_id)
         print(data.shape)
-        print(data_2d.shape)
         for f in range(T):
             frame = np.zeros((height * 2, width, 3), np.uint8)
             cv.line(frame, (0, height), (width, height), (0, 255, 0))
@@ -131,79 +131,52 @@ def main(args):
                         (0, 0, 255),
                         2,
                     )
+                for u in range(25):
+                    x = u // 5
+                    y = u % 5
+                    cv.circle(
+                        frame,
+                        (x * 192 + 96, y * 192 + 50 + height),
+                        10,
+                        (0, 0, 255),
+                    )
                     cv.line(
                         frame,
                         (
-                            int(data_2d[0, f, u - 1, m]),
-                            int(data_2d[1, f, u - 1, m] + height),
+                            int(x * 192 + 96),
+                            int(y * 192 + 50) + height,
                         ),
                         (
-                            int(data_2d[0, f, v - 1, m]),
-                            int(data_2d[1, f, v - 1, m] + height),
+                            int(x * 192 + 500 * data[3, f, u, m] + 96),
+                            int(y * 192 + -500 * data[4, f, u, m] + 50)
+                            + height,
                         ),
                         (0, 0, 255),
                         2,
                     )
+                    cv.circle(
+                        frame,
+                        (x * 192 + 96 + width // 2, y * 192 + 50 + height),
+                        10,
+                        (0, 255, 255),
+                    )
+                    cv.arrowedLine(
+                        frame,
+                        (
+                            int(x * 192 + 96) + width // 2,
+                            int(y * 192 + 50) + height,
+                        ),
+                        (
+                            int(x * 192 + 500 * data[6, f, u, m] + 96)
+                            + width // 2,
+                            int(y * 192 + -500 * data[7, f, u, m] + 50)
+                            + height,
+                        ),
+                        (0, 255, 255),
+                        2,
+                    )
             video.write(frame)
         video.release()
-
-    if len(args.extra_data_dir) > 0:
-        for file in os.scandir(args.extra_data_dir):
-            tmp = file.name.find("A")
-            action_id = int(file.name[tmp + 1 : tmp + 4])
-            if action_id in exists:
-                continue
-            exists[action_id] = 1
-
-            data = np.load(file.path, allow_pickle=True)
-            path_2d = os.path.join(args.extra_data_dir_2d, file.name)
-            data_2d = np.load(path_2d, allow_pickle=True)
-            fourcc = cv.VideoWriter_fourcc(*"mp4v")
-            video = cv.VideoWriter(
-                os.path.join(
-                    args.output_dir, f"{action_id}_{classes[action_id]}.mp4"
-                ),
-                fourcc,
-                fps,
-                (width, height * 2),
-            )
-            C, T, V, M = data.shape
-            print(action_id)
-            print(data.shape)
-            print(data_2d.shape)
-            for f in range(T):
-                frame = np.zeros((height * 2, width, 3), np.uint8)
-                cv.line(frame, (0, height), (width, height), (0, 255, 0))
-                for m in range(M):
-                    for u, v in ADJ:
-                        cv.line(
-                            frame,
-                            (
-                                int(500 * data[0, f, u - 1, m] + 960),
-                                int(-500 * data[1, f, u - 1, m] + 540),
-                            ),
-                            (
-                                int(500 * data[0, f, v - 1, m] + 960),
-                                int(-500 * data[1, f, v - 1, m] + 540),
-                            ),
-                            (0, 0, 255),
-                            2,
-                        )
-                        cv.line(
-                            frame,
-                            (
-                                int(data_2d[0, f, u - 1, m]),
-                                int(data_2d[1, f, u - 1, m] + height),
-                            ),
-                            (
-                                int(data_2d[0, f, v - 1, m]),
-                                int(data_2d[1, f, v - 1, m] + height),
-                            ),
-                            (0, 0, 255),
-                            2,
-                        )
-                video.write(frame)
-            video.release()
 
 
 if __name__ == "__main__":

@@ -37,6 +37,15 @@ def create_args():
     )
     # Dataset
     parser.add_argument(
+        "--features", default="j", type=str, help="Features to use as input"
+    )
+    parser.add_argument(
+        "--length-t",
+        default=64,
+        type=int,
+        help="Number of frames in each sample",
+    )
+    parser.add_argument(
         "--data-path", required=True, type=str, help="Path to dataset"
     )
     parser.add_argument(
@@ -150,6 +159,8 @@ def main(args):
         extra_data_path=args.extra_data_path,
         mode="train",
         split=args.split,
+        features=args.features,
+        length_t=args.length_t,
     )
 
     valid_dataset = NTUDataset(
@@ -157,6 +168,8 @@ def main(args):
         extra_data_path=args.extra_data_path,
         mode="valid",
         split=args.split,
+        features=args.features,
+        length_t=args.length_t,
     )
 
     train_dataloader = DataLoader(
@@ -187,7 +200,7 @@ def main(args):
     print("=" * os.get_terminal_size().columns)
 
     model = STGCN(
-        3,
+        3 * len(args.features),
         args.num_classes,
         act_layer=nn.ReLU,
         dropout_rate=args.dropout_rate,
@@ -197,9 +210,10 @@ def main(args):
     optimizer = optim.AdamW(model.parameters(), lr=args.base_lr)
 
     steps_per_epoch = len(train_dataset) // args.batch_size
-    warmup_steps = args.warmup_epochs * steps_per_epoch
-    max_steps = (args.max_epochs) * steps_per_epoch - warmup_steps
+    warmup_steps = args.warmup_epochs
+    max_steps = args.max_epochs
     lr_scheduler = CosineSchedule(
+        optimizer=optimizer,
         warmup_steps=warmup_steps,
         base_lr=args.base_lr,
         target_lr=args.target_lr,
@@ -235,7 +249,7 @@ def main(args):
         if len(args.save_path) > 0:
             os.makedirs(os.path.dirname(args.save_path), exist_ok=True)
         for e in range(args.start_epoch, args.epochs + 1):
-            train_avg_loss, train_loss_values = train_one_epoch(
+            train_avg_loss, train_acc = train_one_epoch(
                 epoch=e,
                 model=model,
                 optimizer=optimizer,
@@ -254,8 +268,9 @@ def main(args):
             if len(args.log_path) > 0:
                 log.append(
                     {
+                        "epoch": e,
                         "train_avg_loss": train_avg_loss,
-                        "train_loss_values": train_loss_values,
+                        "train_acc": train_acc,
                         "valid_avg_loss": valid_avg_loss,
                         "valid_acc": valid_acc,
                     }

@@ -31,25 +31,19 @@ class STGCN(nn.Module):
             (256, 256, 1),
             (256, 256, 1),
         ]
-        down_id = {
-            4: 1, 
-            7: 2,}
         self.blocks = nn.ModuleList()
-        A = self.graph.get_compose(0)
+        A = self.graph.get_partial_adj()
         for i, cf in enumerate(layer_cfs):
-            if i in down_id:
-                A = self.graph.get_compose(down_id[i])
-
             self.blocks.append(
                 Block(
                     cf[0],
                     cf[1],
-                    A[0] if i in down_id else A[1],
+                    A,
                     stride=cf[2],
                     dropout_rate=dropout_rate,
-                    residual=(i > 0 and i not in down_id),
+                    residual=(i > 0),
                     act_layer=act_layer,
-                    init_block=(i == 0),
+                    first_block=(i == 0),
                 )
             )
         self.avg_pool = nn.AdaptiveMaxPool2d((1, 1))

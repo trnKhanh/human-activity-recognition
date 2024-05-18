@@ -2,8 +2,9 @@ import os
 import numpy as np
 
 import torch
+import torchvision.transforms as transforms
 from torch.utils.data import Dataset
-from .augment import UniSampling
+from datasets.augment import ResizeSequence
 
 
 class NTUDataset(Dataset):
@@ -13,10 +14,12 @@ class NTUDataset(Dataset):
         extra_data_path="",
         mode="train",
         split="x-subject",
-        length_t=100,
+        length_t=64,
+        features="j",
     ):
         super().__init__()
-        self.augment = None
+        self.transform = ResizeSequence(length_t)
+        self.features = features
         self.samples = {"train": [], "valid": []}
         self.labels = {"train": [], "valid": []}
         self.mode = mode
@@ -133,6 +136,7 @@ class NTUDataset(Dataset):
                     self.labels["valid"].append(label)
 
     def __len__(self):
+        return 8
         return len(self.samples[self.mode])
 
     def __getitem__(self, index):
@@ -140,10 +144,27 @@ class NTUDataset(Dataset):
         label = self.labels[self.mode][index]
 
         sample = np.load(sample_path, allow_pickle=True)
-        if self.augment is not None:
-            sample = self.augment(sample, train=self.mode=="train")
-
         sample = torch.from_numpy(sample)
-        sample = sample[:3]
+        if self.transform is not None:
+            sample = self.transform(sample)
 
-        return sample, label
+        if self.features[0] == "j":
+            data = sample[:3]
+        elif self.features[0] == "b":
+            data = sample[3:6]
+        elif self.features[0] == "m":
+            data = sample[6:9]
+        else:
+            raise ValueError(f"{self.features} is invalid")
+
+        for f in self.features[1:]:
+            if f == "j":
+                data = torch.cat([data, sample[:3]])
+            elif f == "b":
+                data = torch.cat([data, sample[3:6]])
+            elif f == "m":
+                data = torch.cat([data, sample[6:9]])
+            else:
+                raise ValueError(f"{self.features} is invalid")
+
+        return data, label

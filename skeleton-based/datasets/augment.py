@@ -1,4 +1,6 @@
 import numpy as np
+import torch
+import torch.nn.functional as F
 
 
 def moving_augment(
@@ -44,3 +46,28 @@ class UniSampling(object):
         aug_sample = sample[:, aug_ids, :, :]
 
         return aug_sample
+
+
+class ResizeSequence(object):
+    def __init__(self, new_length: int):
+        self.new_length = new_length
+
+    def __call__(self, data: torch.Tensor):
+        C, T, V, M = data.size()
+        data = data.clone()
+        data = data.permute(0, 2, 3, 1).contiguous().view(C * V * M, T)
+        data = data[None, None, :, :]
+        data = F.interpolate(
+            data,
+            size=(C * V * M, self.new_length),
+            mode="bilinear",
+            align_corners=False,
+        ).squeeze()
+        data = (
+            data.contiguous()
+            .view(C, V, M, self.new_length)
+            .permute(0, 3, 1, 2)
+            .contiguous()
+        )
+
+        return data

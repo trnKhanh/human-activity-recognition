@@ -26,10 +26,9 @@ def train_one_epoch(
     total_count = 0
     with tqdm(dataloader, unit="batch") as tepoch:
         tepoch.set_description(f"Epoch {epoch}")
+        if lr_schedule is not None:
+            lr_schedule.step()
         for samples, labels in tepoch:
-            if lr_schedule is not None:
-                for param_group in optimizer.param_groups:
-                    param_group["lr"] = lr_schedule(cur_step)
 
             samples = samples.to(device)
             labels = labels.to(device)
@@ -55,7 +54,8 @@ def train_one_epoch(
 
         avg_loss = sum(loss_values) / len(loss_values)
 
-    return avg_loss, loss_values
+    acc = correct_count / total_count
+    return avg_loss, acc 
 
 
 def valid_one_epoch(
