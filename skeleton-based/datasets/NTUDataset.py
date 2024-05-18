@@ -136,7 +136,6 @@ class NTUDataset(Dataset):
                     self.labels["valid"].append(label)
 
     def __len__(self):
-        return 8
         return len(self.samples[self.mode])
 
     def __getitem__(self, index):
