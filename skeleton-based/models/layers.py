@@ -157,7 +157,7 @@ class CTRGCN(nn.Module):
         self,
         in_channels: int,
         out_channels: int,
-        rel_reduction: int = 4,
+        rel_reduction: int = 8,
         mid_reduction: int = 1,
         first_block: bool = False,
     ):
@@ -254,7 +254,8 @@ class Block(nn.Module):
         dropout_rate: float = 0,
         residual: bool = True,
         act_layer=nn.ReLU,
-        first_block=False,
+        first_block: bool = False,
+        adaptive: bool = False,
     ):
         super().__init__()
         self.in_channels = in_channels
@@ -267,15 +268,15 @@ class Block(nn.Module):
             dropout_rate=dropout_rate,
             first_block=first_block,
             act_layer=act_layer,
-            adaptive=True,
+            adaptive=adaptive,
         )
         if not residual:
-            self.res = lambda x: 0
-        elif in_channels == out_channels and stride == 1:
-            self.res = lambda x: x
+            self.g_res = lambda x: 0
+        elif in_channels == out_channels:
+            self.g_res = lambda x: x
         else:
-            self.res = nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, 1, stride=(stride, 1)),
+            self.g_res = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, 1),
                 nn.BatchNorm2d(out_channels),
             )
         self.g_norm = nn.BatchNorm2d(out_channels)
@@ -289,6 +290,15 @@ class Block(nn.Module):
             dropout_rate=dropout_rate,
             act_layer=act_layer,
         )
+        if not residual:
+            self.res = lambda x: 0
+        elif in_channels == out_channels and stride == 1:
+            self.res = lambda x: x
+        else:
+            self.res = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, 1, stride=(stride, 1)),
+                nn.BatchNorm2d(out_channels),
+            )
         self.t_norm = nn.BatchNorm2d(out_channels)
         self.act = act_layer()
         self.dropout = (
@@ -296,10 +306,11 @@ class Block(nn.Module):
         )
 
     def forward(self, x):
+        g_res = self.g_res(x)
         res = self.res(x)
 
         x = self.gcn(x)
-        x = self.act(self.g_norm(x))
+        x = self.act(self.g_norm(x) + g_res)
         x = self.dropout(x)
 
         x = self.tcn(x)

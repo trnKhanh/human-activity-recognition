@@ -146,9 +146,9 @@ def create_args():
         help="Dropout rate (default: 0)",
     )
     parser.add_argument(
-        "--importance",
+        "--adaptive",
         action="store_true",
-        help="Whether to use importance for graph edges",
+        help="Whether to use adaptive graph for graph edges",
     )
     return parser.parse_args()
 
@@ -204,10 +204,13 @@ def main(args):
         args.num_classes,
         act_layer=nn.ReLU,
         dropout_rate=args.dropout_rate,
+        adaptive=args.adaptive,
     )
     model.to(args.device)
     num_params = sum([p.numel() for p in model.parameters()])
-    optimizer = optim.AdamW(model.parameters(), lr=args.base_lr)
+    optimizer = optim.SGD(
+        model.parameters(), lr=args.base_lr, momentum=0.9, weight_decay=0.0004
+    )
 
     steps_per_epoch = len(train_dataset) // args.batch_size
     warmup_steps = args.warmup_epochs

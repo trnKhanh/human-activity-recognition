@@ -13,6 +13,7 @@ class STGCN(nn.Module):
         num_classes: int = 60,
         act_layer=nn.ReLU,
         dropout_rate: float = 0,
+        adaptive: bool = True,
     ):
         super().__init__()
         self.graph = NTUGraph()
@@ -44,6 +45,7 @@ class STGCN(nn.Module):
                     residual=(i > 0),
                     act_layer=act_layer,
                     first_block=(i == 0),
+                    adaptive=adaptive,
                 )
             )
         self.avg_pool = nn.AdaptiveMaxPool2d((1, 1))
@@ -63,8 +65,7 @@ class STGCN(nn.Module):
 
         NM, C, T, V = x.size()
         x = x.view(N, M, C, T, V)
-        x = x.permute(0, 2, 3, 1, 4).contiguous()
-        x = x.view(N, C, T, V * M)
-        x = torch.squeeze(self.avg_pool(x), dim=(2, 3))
+        x = x.view(N, M, C, T * V)
+        x = x.mean(3).mean(1)
         x = self.head(x)
         return x
