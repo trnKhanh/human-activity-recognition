@@ -12,13 +12,14 @@ class CosineSchedule(object):
         base_lr: float,
         target_lr: float,
         max_steps: int,
+        cur_step: int = 0,
     ):
-        self.optimizer = optimizer 
+        self.optimizer = optimizer
         self.base_lr = base_lr
         self.target_lr = target_lr
         self.warmup_steps = warmup_steps
         self.max_steps = max_steps
-        self.cur_step = 0
+        self.cur_step = cur_step
 
     def __call__(self, cur_step: int):
         if cur_step <= self.warmup_steps:
@@ -31,6 +32,7 @@ class CosineSchedule(object):
             )
         else:
             return self.target_lr
+
     def step(self):
         self.cur_step += 1
         for param_group in self.optimizer.param_groups:

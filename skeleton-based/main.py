@@ -221,6 +221,7 @@ def main(args):
         base_lr=args.base_lr,
         target_lr=args.target_lr,
         max_steps=max_steps,
+        cur_step=args.start_epoch - 1,
     )
     if len(args.load_ckpt) > 0 and os.path.isfile(args.load_ckpt):
         state_dict = torch.load(args.load_ckpt, map_location=args.device)
