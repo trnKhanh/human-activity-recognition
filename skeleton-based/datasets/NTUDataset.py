@@ -5,6 +5,7 @@ import torch
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset
 from datasets.augment import ResizeSequence
+from datasets.utils import get_angle_motion
 
 
 class NTUDataset(Dataset):
@@ -144,26 +145,35 @@ class NTUDataset(Dataset):
 
         sample = np.load(sample_path, allow_pickle=True)
         sample = torch.from_numpy(sample)
-        if self.transform is not None:
-            sample = self.transform(sample)
 
-        if self.features[0] == "j":
+        features = self.features.split(",")
+        for id, f in enumerate(features):
+            features[id] = f.strip()
+
+        if features[0] == "j":
             data = sample[:3]
-        elif self.features[0] == "b":
+        elif features[0] == "b":
             data = sample[3:6]
-        elif self.features[0] == "m":
+        elif features[0] == "m":
             data = sample[6:9]
+        elif features[0] == "am":
+            data = get_angle_motion(sample)
         else:
             raise ValueError(f"{self.features} is invalid")
 
-        for f in self.features[1:]:
+        for f in features[1:]:
             if f == "j":
                 data = torch.cat([data, sample[:3]])
             elif f == "b":
                 data = torch.cat([data, sample[3:6]])
             elif f == "m":
                 data = torch.cat([data, sample[6:9]])
+            elif f == "am":
+                data = torch.cat([data, get_angle_motion(sample)])
             else:
                 raise ValueError(f"{self.features} is invalid")
+
+        if self.transform is not None:
+            data = self.transform(data)
 
         return data, label

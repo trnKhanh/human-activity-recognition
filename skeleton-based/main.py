@@ -199,8 +199,9 @@ def main(args):
     print(f"  Valid size: {len(valid_dataset)} samples")
     print("=" * os.get_terminal_size().columns)
 
+    num_features = args.features.count(",") + 1
     model = STGCN(
-        3 * len(args.features),
+        3 * num_features,
         args.num_classes,
         act_layer=nn.ReLU,
         dropout_rate=args.dropout_rate,

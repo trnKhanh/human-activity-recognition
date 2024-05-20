@@ -52,7 +52,7 @@ class ResizeSequence(object):
     def __init__(self, new_length: int):
         self.new_length = new_length
 
-    def __call__(self, data: torch.Tensor):
+    def __call__(self, data: torch.Tensor) -> torch.Tensor:
         C, T, V, M = data.size()
         data = data.clone()
         data = data.permute(0, 2, 3, 1).contiguous().view(C * V * M, T)
