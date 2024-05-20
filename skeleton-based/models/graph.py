@@ -148,7 +148,7 @@ class NTUGraph(object):
 
     def get_partial_adj(self):
         EA = self.get_eccentric_adj(True)
-        CA = self.get_eccentric_adj(True)
+        CA = self.get_concentric_adj(True)
         A = torch.eye(self.get_num_joints()).unsqueeze(0)
         return torch.cat([EA, A, CA], dim=0)
 
@@ -172,7 +172,7 @@ class NTUGraph(object):
         A = self.A.clone()
         for i in range(A.size(0)):
             for j in range(A.size(1)):
-                if A[i][j] == 1 and self.depth[j] > self.depth[i]:
+                if A[i][j] == 1 and self.depth[j] >= self.depth[i]:
                     A[i][j] = 0
         if normalize:
             return self.normalize_adj(A).unsqueeze(0)
@@ -183,7 +183,7 @@ class NTUGraph(object):
         A = self.A.clone()
         for i in range(A.size(0)):
             for j in range(A.size(1)):
-                if A[i][j] == 1 and self.depth[j] < self.depth[i]:
+                if A[i][j] == 1 and self.depth[j] <= self.depth[i]:
                     A[i][j] = 0
         if normalize:
             return self.normalize_adj(A).unsqueeze(0)
@@ -201,4 +201,6 @@ class NTUGraph(object):
         return A
 
     def normalize_adj(self, A):
-        return A / torch.sum(A, dim=1, keepdim=True)
+        D = torch.sum(A, dim=1, keepdim=True)
+        D[D == 0] = 1
+        return A / D
