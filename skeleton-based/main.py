@@ -388,7 +388,19 @@ def main(args):
                 models[-1].load_state_dict(state_dict)
             print(f"Loaded model from {args.ensemble[i]}")
         models.to(args.device)
-        valid_essemble_one_epoch(models, valid_dataloaders, args.device)
+        valid_acc, preds, labels = valid_essemble_one_epoch(
+            models, valid_dataloaders, args.device
+        )
+        print(f"Evalution accuracy: {valid_acc}")
+        if len(args.eval_log_path) > 0:
+            os.makedirs(os.path.dirname(args.eval_log_path), exist_ok=True)
+            with open(args.eval_log_path, "w", encoding="utf-8") as f:
+                json.dump(
+                    {"preds": preds, "labels": labels},
+                    f,
+                    ensure_ascii=False,
+                    indent=2,
+                )
 
 
 if __name__ == "__main__":
