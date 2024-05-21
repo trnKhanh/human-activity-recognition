@@ -8,7 +8,11 @@ from datasets.NTUDataset import NTUDataset
 from models.net import STGCN
 from models.optims import CosineSchedule
 from models.utils import build_A
-from utils.engines import train_one_epoch, valid_one_epoch
+from utils.engines import (
+    train_one_epoch,
+    valid_one_epoch,
+    valid_essemble_one_epoch,
+)
 from utils.checkpoints import load_checkpoint, save_checkpoint
 
 import torch
@@ -37,7 +41,11 @@ def create_args():
     )
     # Dataset
     parser.add_argument(
-        "--features", default="j", type=str, help="Features to use as input"
+        "--features",
+        default=["j"],
+        nargs="+",
+        type=str,
+        help="Features to use as inputs. If model ensemble is used, this should match the order of given models",
     )
     parser.add_argument(
         "--length-t",
@@ -134,6 +142,13 @@ def create_args():
     )
     # Model
     parser.add_argument(
+        "--ensemble",
+        default=[],
+        nargs="*",
+        type=str,
+        help="List of models used in multi-stream",
+    )
+    parser.add_argument(
         "--num-classes",
         default=120,
         type=int,
@@ -154,52 +169,69 @@ def create_args():
 
 
 def main(args):
-    train_dataset = NTUDataset(
-        data_path=args.data_path,
-        extra_data_path=args.extra_data_path,
-        mode="train",
-        split=args.split,
-        features=args.features,
-        length_t=args.length_t,
-    )
+    train_datasets = []
+    valid_datasets = []
+    train_dataloaders = []
+    valid_dataloaders = []
+    for feature in args.features:
+        train_datasets.append(
+            NTUDataset(
+                data_path=args.data_path,
+                extra_data_path=args.extra_data_path,
+                mode="train",
+                split=args.split,
+                features=feature,
+                length_t=args.length_t,
+            )
+        )
 
-    valid_dataset = NTUDataset(
-        data_path=args.data_path,
-        extra_data_path=args.extra_data_path,
-        mode="valid",
-        split=args.split,
-        features=args.features,
-        length_t=args.length_t,
-    )
+        valid_datasets.append(
+            NTUDataset(
+                data_path=args.data_path,
+                extra_data_path=args.extra_data_path,
+                mode="valid",
+                split=args.split,
+                features=feature,
+                length_t=args.length_t,
+            )
+        )
 
-    train_dataloader = DataLoader(
-        dataset=train_dataset,
-        batch_size=args.batch_size,
-        shuffle=True,
-        drop_last=True,
-        num_workers=args.num_workers,
-        pin_memory=True,
-    )
-    valid_dataloader = DataLoader(
-        dataset=valid_dataset,
-        batch_size=args.batch_size,
-        shuffle=False,
-        drop_last=False,
-        num_workers=args.num_workers,
-        pin_memory=True,
-    )
+        train_dataloaders.append(
+            DataLoader(
+                dataset=train_datasets[-1],
+                batch_size=args.batch_size,
+                shuffle=True,
+                drop_last=True,
+                num_workers=args.num_workers,
+                pin_memory=True,
+            )
+        )
+        valid_dataloaders.append(
+            DataLoader(
+                dataset=valid_datasets[-1],
+                batch_size=args.batch_size,
+                shuffle=False,
+                drop_last=False,
+                num_workers=args.num_workers,
+                pin_memory=True,
+            )
+        )
     args.device = torch.device(args.device)
 
     print("=" * os.get_terminal_size().columns)
-    print("Dataset")
+    print("Datasets")
     print(f"  Data path: {args.data_path}")
     if len(args.extra_data_path) > 0:
         print(f"  Extra data path: {args.extra_data_path}")
-    print(f"  Train size: {len(train_dataset)} samples")
-    print(f"  Valid size: {len(valid_dataset)} samples")
+    for id in range(len(args.features)):
+        print("-" * os.get_terminal_size().columns)
+        print(f"  Feature: {args.features[id]}")
+        print(f"  Train size: {len(train_datasets[id])} samples")
+        print(f"  Valid size: {len(valid_datasets[id])} samples")
+        print("-" * os.get_terminal_size().columns)
     print("=" * os.get_terminal_size().columns)
 
-    num_features = args.features.count(",") + 1
+    num_features = args.features[0].count(",") + 1
     model = STGCN(
         3 * num_features,
         args.num_classes,
@@ -213,7 +245,7 @@ def main(args):
         model.parameters(), lr=args.base_lr, momentum=0.9, weight_decay=0.0004
     )
 
-    steps_per_epoch = len(train_dataset) // args.batch_size
+    steps_per_epoch = len(train_datasets[0]) // args.batch_size
     warmup_steps = args.warmup_epochs
     max_steps = args.max_epochs
     lr_scheduler = CosineSchedule(
@@ -230,6 +262,7 @@ def main(args):
             model.load_state_dict(state_dict["model"])
         else:
             model.load_state_dict(state_dict)
+        print(f"Loaded model from {args.load_ckpt}")
 
     min_loss = np.Inf
     max_acc = -np.Inf
@@ -259,7 +292,7 @@ def main(args):
                 model=model,
                 optimizer=optimizer,
                 loss_fn=loss_fn,
-                dataloader=train_dataloader,
+                dataloader=train_dataloaders[0],
                 device=args.device,
                 start_step=(e - 1) * steps_per_epoch + 1,
                 lr_schedule=lr_scheduler,
@@ -267,7 +300,7 @@ def main(args):
             valid_avg_loss, valid_acc, _, _ = valid_one_epoch(
                 model=model,
                 loss_fn=loss_fn,
-                dataloader=valid_dataloader,
+                dataloader=valid_dataloaders[0],
                 device=args.device,
             )
             if len(args.log_path) > 0:
@@ -320,7 +353,7 @@ def main(args):
         valid_avg_loss, valid_acc, preds, labels = valid_one_epoch(
             model=model,
             loss_fn=loss_fn,
-            dataloader=valid_dataloader,
+            dataloader=valid_dataloaders[0],
             device=args.device,
         )
         print(f"Evalution accuracy: {valid_acc}")
@@ -333,6 +366,29 @@ def main(args):
                     ensure_ascii=False,
                     indent=2,
                 )
+    if len(args.ensemble) > 0:
+        assert len(args.features) == len(args.ensemble)
+        models = nn.ModuleList()
+        for i in range(len(args.ensemble)):
+            num_features = args.features[i].count(",") + 1
+            models.append(
+                STGCN(
+                    3 * num_features,
+                    args.num_classes,
+                    act_layer=nn.ReLU,
+                    dropout_rate=args.dropout_rate,
+                    adaptive=args.adaptive,
+                )
+            )
+
+            state_dict = torch.load(args.ensemble[i], map_location=args.device)
+            if "model" in state_dict:
+                models[-1].load_state_dict(state_dict["model"])
+            else:
+                models[-1].load_state_dict(state_dict)
+            print(f"Loaded model from {args.ensemble[i]}")
+        models.to(args.device)
+        valid_essemble_one_epoch(models, valid_dataloaders, args.device)
 
 
 if __name__ == "__main__":

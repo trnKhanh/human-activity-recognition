@@ -55,7 +55,7 @@ def train_one_epoch(
         avg_loss = sum(loss_values) / len(loss_values)
 
     acc = correct_count / total_count
-    return avg_loss, acc 
+    return avg_loss, acc
 
 
 def valid_one_epoch(
@@ -97,3 +97,48 @@ def valid_one_epoch(
             acc = correct_count / total_count
 
     return avg_loss, acc, preds_arr, labels_arr
+
+
+def valid_essemble_one_epoch(
+    models: nn.ModuleList, dataloaders: list[DataLoader], device: torch.device
+):
+    dataloader_iters = []
+    for dataloader in dataloaders:
+        dataloader_iters.append(iter(dataloader))
+
+    models.eval()
+
+    preds_arr = []
+    labels_arr = []
+
+    correct_count = 0
+    total_count = 0
+    with torch.no_grad():
+        with tqdm(range(len(dataloaders[0])), unit="batch") as tepoch:
+            tepoch.set_description("Validation")
+            for _ in tepoch:
+                probs = torch.zeros(0)
+                labels = torch.empty(0)
+                for i in range(len(models)):
+                    samples, labels = next(dataloader_iters[i])
+
+                    samples = samples.to(device)
+                    labels = labels.to(device)
+                    preds = models[i](samples)
+                    preds = preds.softmax(dim=-1)
+                    probs = probs + preds if probs.size(0) != 0 else preds
+
+                pred_classes = torch.argmax(probs, dim=1)
+                correct_count += (pred_classes == labels).sum().item()
+
+                preds_arr.extend(pred_classes.tolist())
+                labels_arr.extend(labels.tolist())
+
+                total_count += len(labels)
+                tepoch.set_postfix(
+                    acc=correct_count / total_count,
+                )
+
+            acc = correct_count / total_count
+
+    return acc, preds_arr, labels_arr
