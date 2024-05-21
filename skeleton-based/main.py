@@ -274,13 +274,13 @@ def main(args):
         print(f"Resuming from epoch {args.start_epoch}, min_loss={min_loss}")
 
     loss_fn = nn.CrossEntropyLoss()
-    print("=" * os.get_terminal_size().columns)
-    print("Model")
-    print(model)
-    print(f"  Number of parameters: {num_params}")
-    print("=" * os.get_terminal_size().columns)
 
     if args.train:
+        print("=" * os.get_terminal_size().columns)
+        print("Model")
+        print(model)
+        print(f"  Number of parameters: {num_params}")
+        print("=" * os.get_terminal_size().columns)
         log = []
         if len(args.log_path) > 0:
             os.makedirs(os.path.dirname(args.log_path), exist_ok=True)
