@@ -139,7 +139,7 @@ class NTUDataset(Dataset):
                     if data is not None
                     else self.__get_motion(sample)
                 )
-            elif f == "jm":
+            elif f == "bm":
                 data = (
                     torch.cat([data, self.__get_bones_motion(sample)])
                     if data is not None
@@ -152,7 +152,7 @@ class NTUDataset(Dataset):
                     else self.__get_angular_motion(sample)
                 )
             else:
-                raise ValueError(f"{self.features} is invalid")
+                raise ValueError(f"Feature {f} is invalid")
 
         if data is not None and self.transform is not None:
             data = self.transform(data)
@@ -179,8 +179,7 @@ class NTUDataset(Dataset):
                 if A[u, v] == 0:
                     continue
                 if self.graph.depth[u] > self.graph.depth[v]:
-                    bones[:, :, u, :] = sample[:, :, v, :] - sample[:, :, u, :]
-
+                    bones[:, :, u, :] = sample[:, :, u, :] - sample[:, :, v, :]
         return bones
 
     def __get_bones_motion(self, sample: torch.Tensor):
