@@ -19,7 +19,6 @@ def get_global_angle_motion(sample: torch.Tensor, center: int):
     m_cos = p / (len[1:, :, :] * len[:-1, :, :])
     global_theta = torch.acos(m_cos)
 
-
     return 1 - m_cos
 
 
@@ -52,7 +51,7 @@ def get_local_angle_motion(sample: torch.Tensor):
     return 1 - m_cos
 
 
-def get_angle_motion(sample: torch.Tensor):
+def get_angular_motion(sample: torch.Tensor):
     C, T, V, M = sample.size()
     angle_embed = torch.zeros((3, T, V, M))
 

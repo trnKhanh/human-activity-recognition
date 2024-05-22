@@ -7,6 +7,7 @@ from torch.utils.data import Dataset
 from datasets.augment import ResizeSequence
 from datasets.utils import get_angle_motion
 
+from ntu_graph import Graph
 
 class NTUDataset(Dataset):
     def __init__(
@@ -177,3 +178,4 @@ class NTUDataset(Dataset):
             data = self.transform(data)
 
         return data, label
+

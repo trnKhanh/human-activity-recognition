@@ -1,9 +1,8 @@
 import torch
 from torch import nn
 
-from models.utils import build_A
-from .layers import Block
-from .graph import NTUGraph
+from src.models.layers import Block
+from src.graph.ntu_graph import Graph
 
 
 class STGCN(nn.Module):
@@ -16,9 +15,9 @@ class STGCN(nn.Module):
         adaptive: bool = True,
     ):
         super().__init__()
-        self.graph = NTUGraph()
+        self.graph = Graph()
         self.data_norm = nn.BatchNorm1d(
-            in_channels * self.graph.get_num_joints()
+            in_channels * self.graph.get_A().shape[0]
         )
         layer_cfs = [
             (in_channels, 64, 1),
@@ -33,7 +32,7 @@ class STGCN(nn.Module):
             (256, 256, 1),
         ]
         self.blocks = nn.ModuleList()
-        A = self.graph.get_partial_adj()
+        A = torch.from_numpy(self.graph.get_spatial_A())
         for i, cf in enumerate(layer_cfs):
             self.blocks.append(
                 Block(

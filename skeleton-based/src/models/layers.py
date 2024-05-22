@@ -1,6 +1,5 @@
 import torch
 from torch import nn
-from .graph import NTUGraph
 
 
 class TCN(nn.Module):
