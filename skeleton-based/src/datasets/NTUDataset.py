@@ -3,16 +3,16 @@ import numpy as np
 
 import torch
 from torch.utils.data import Dataset
-from datasets.augment import ResizeSequence
-from datasets.utils import get_angular_motion
+from src.datasets.augment import ResizeSequence
+from src.datasets.utils import get_angular_motion
 
 from src.graph.ntu_graph import Graph
 from src.datasets.utils import get_angular_motion
 
 
 class NTUDataset(Dataset):
-    train_subjects_file = "../resources/train_subjects.txt"
-    train_cameras_file = "../resources/train_cameras.txt"
+    train_subjects_file = "../../resources/train_subjects.txt"
+    train_cameras_file = "../../resources/train_cameras.txt"
 
     def __init__(
         self,

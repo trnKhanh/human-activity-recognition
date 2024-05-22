@@ -6,7 +6,8 @@ import numpy as np
 
 from src.datasets.NTUDataset import NTUDataset
 from src.models.net import STGCN
-from src.models.optims import CosineSchedule
+
+from src.utils.optims import CosineSchedule
 from src.utils.engines import (
     train_one_epoch,
     valid_one_epoch,

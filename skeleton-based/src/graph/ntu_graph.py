@@ -3,7 +3,7 @@ import numpy as np
 
 
 class Graph(object):
-    graph_path = "../resources/ntu_graph.txt"
+    graph_path = "../../resources/ntu_graph.txt"
 
     def __init__(self, center: int = 20, graph_path=None):
         self.center = center
