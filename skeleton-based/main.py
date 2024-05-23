@@ -269,7 +269,7 @@ def main(args):
 
     if len(args.resume) > 0 and os.path.isfile(args.resume):
         args.start_epoch, min_loss = load_checkpoint(
-            args.resume, model, optimizer, lr_scheduler
+            args.resume, model, optimizer, lr_scheduler, args.device,
         )
         print(f"Resuming from epoch {args.start_epoch}, min_loss={min_loss}")
 

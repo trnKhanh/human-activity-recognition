@@ -24,7 +24,7 @@ def train_one_epoch(
     loss_values = []
     correct_count = 0
     total_count = 0
-    with tqdm(dataloader, unit="batch") as tepoch:
+    with tqdm(dataloader, unit="batch", ncols=0) as tepoch:
         tepoch.set_description(f"Epoch {epoch}")
         if lr_schedule is not None:
             lr_schedule.step()
@@ -70,7 +70,7 @@ def valid_one_epoch(
     correct_count = 0
     total_count = 0
     with torch.no_grad():
-        with tqdm(dataloader, unit="batch") as tepoch:
+        with tqdm(dataloader, unit="batch", ncols=0) as tepoch:
             tepoch.set_description("Validation")
             for samples, labels in tepoch:
                 samples = samples.to(device)
@@ -114,7 +114,7 @@ def valid_essemble_one_epoch(
     correct_count = 0
     total_count = 0
     with torch.no_grad():
-        with tqdm(range(len(dataloaders[0])), unit="batch") as tepoch:
+        with tqdm(range(len(dataloaders[0])), unit="batch", ncols=0) as tepoch:
             tepoch.set_description("Validation")
             for _ in tepoch:
                 probs = torch.zeros(0)

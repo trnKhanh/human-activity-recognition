@@ -25,14 +25,20 @@ def save_checkpoint(
 
 
 def load_checkpoint(
-    path: str, model: nn.Module, optimizer: optim.Optimizer, lr_scheduler
+    path: str,
+    model: nn.Module,
+    optimizer: optim.Optimizer,
+    lr_scheduler,
+    device,
 ):
     print(f"Loading model from {path}")
-    state_dict = torch.load(path)
+    state_dict = torch.load(path, map_location=device)
     if "model" in state_dict:
         model.load_state_dict(state_dict["model"])
     if "optimizer" in state_dict:
         optimizer.load_state_dict(state_dict["optimizer"])
+    if "scheduler" in state_dict:
+        lr_scheduler.load_state_dict(state_dict["scheduler"])
     min_loss = np.Inf
     if "min_loss" in state_dict:
         min_loss = state_dict["min_loss"]
