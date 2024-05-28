@@ -69,6 +69,9 @@ def valid_one_epoch(
     loss_values = []
     correct_count = 0
     total_count = 0
+
+    score = None
+
     with torch.no_grad():
         with tqdm(dataloader, unit="batch", ncols=0) as tepoch:
             tepoch.set_description("Validation")
@@ -77,6 +80,9 @@ def valid_one_epoch(
                 labels = labels.to(device)
 
                 preds = model(samples)
+
+                score = preds if score is None else torch.cat([score, preds])
+
                 loss = loss_fn(preds, labels)
 
                 loss_values.append(loss.item())
@@ -96,7 +102,7 @@ def valid_one_epoch(
             avg_loss = sum(loss_values) / len(loss_values)
             acc = correct_count / total_count
 
-    return avg_loss, acc, preds_arr, labels_arr
+    return avg_loss, acc, preds_arr, labels_arr, score
 
 
 def valid_essemble_one_epoch(
@@ -125,7 +131,7 @@ def valid_essemble_one_epoch(
                     samples = samples.to(device)
                     labels = labels.to(device)
                     preds = models[i](samples)
-                    preds = preds.softmax(dim=-1)
+                    # preds = preds.softmax(dim=-1)
                     probs = probs + preds if probs.size(0) != 0 else preds
 
                 pred_classes = torch.argmax(probs, dim=1)

@@ -23,6 +23,9 @@ from torch import optim, nn
 def create_args():
     parser = ArgumentParser()
 
+    parser.add_argument(
+        "--score-path", default="", type=str, help="Where to save score"
+    )
     parser.add_argument("--train", action="store_true", help="Whether to train")
     parser.add_argument(
         "--valid", action="store_true", help="Whether to validate"
@@ -269,7 +272,11 @@ def main(args):
 
     if len(args.resume) > 0 and os.path.isfile(args.resume):
         args.start_epoch, min_loss = load_checkpoint(
-            args.resume, model, optimizer, lr_scheduler, args.device,
+            args.resume,
+            model,
+            optimizer,
+            lr_scheduler,
+            args.device,
         )
         print(f"Resuming from epoch {args.start_epoch}, min_loss={min_loss}")
 
@@ -297,7 +304,7 @@ def main(args):
                 start_step=(e - 1) * steps_per_epoch + 1,
                 lr_schedule=lr_scheduler,
             )
-            valid_avg_loss, valid_acc, _, _ = valid_one_epoch(
+            valid_avg_loss, valid_acc, _, _, score = valid_one_epoch(
                 model=model,
                 loss_fn=loss_fn,
                 dataloader=valid_dataloaders[0],
@@ -350,12 +357,19 @@ def main(args):
                     )
 
     if args.valid:
-        valid_avg_loss, valid_acc, preds, labels = valid_one_epoch(
+        valid_avg_loss, valid_acc, preds, labels, score = valid_one_epoch(
             model=model,
             loss_fn=loss_fn,
             dataloader=valid_dataloaders[0],
             device=args.device,
         )
+        if len(args.score_path):
+            if score is not None:
+                score_np = score.cpu().detach().numpy()
+
+                os.makedirs(os.path.dirname(args.score_path), exist_ok=True)
+                np.save(args.score_path, score_np)
+
         print(f"Evalution accuracy: {valid_acc}")
         if len(args.eval_log_path) > 0:
             os.makedirs(os.path.dirname(args.eval_log_path), exist_ok=True)
