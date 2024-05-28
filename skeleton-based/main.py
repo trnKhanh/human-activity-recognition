@@ -365,6 +365,8 @@ def main(args):
         )
         if len(args.score_path):
             if score is not None:
+                print(score)
+                print("$")
                 score_np = score.cpu().detach().numpy()
                 print(score_np)
 
