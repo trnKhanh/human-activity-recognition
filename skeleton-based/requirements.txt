@@ -3,3 +3,4 @@ torchvision==0.18.0
 numpy==1.26.4
 tqdm
 matplotlib
+torchsummary
