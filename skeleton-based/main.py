@@ -365,10 +365,7 @@ def main(args):
         )
         if len(args.score_path):
             if score is not None:
-                print(score)
-                print("$")
                 score_np = score.cpu().detach().numpy()
-                print(score_np)
 
                 os.makedirs(os.path.dirname(args.score_path), exist_ok=True)
                 np.save(args.score_path, score_np)

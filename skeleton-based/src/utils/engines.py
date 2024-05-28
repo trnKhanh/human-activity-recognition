@@ -71,7 +71,6 @@ def valid_one_epoch(
     total_count = 0
 
     score = None
-    cnt = 0
     with torch.no_grad():
         with tqdm(dataloader, unit="batch", ncols=0) as tepoch:
             tepoch.set_description("Validation")
@@ -80,11 +79,6 @@ def valid_one_epoch(
                 labels = labels.to(device)
 
                 preds = model(samples)
-                if cnt == 0:
-                    print(preds)
-                    print(torch.argmax(preds, dim=1))
-                    print(labels)
-                    cnt += 1
 
                 score = preds if score is None else torch.cat([score, preds])
 
