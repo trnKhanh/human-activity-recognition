@@ -16,6 +16,7 @@ from src.utils.engines import (
 from src.utils.checkpoints import load_checkpoint, save_checkpoint
 
 import torch
+from torchsummary import summary
 from torch.utils.data import DataLoader
 from torch import optim, nn
 
@@ -285,7 +286,7 @@ def main(args):
     if args.train:
         print("=" * os.get_terminal_size().columns)
         print("Model")
-        print(model)
+        summary(model, (3, 64, 25, 2))
         print(f"  Number of parameters: {num_params}")
         print("=" * os.get_terminal_size().columns)
         log = []
