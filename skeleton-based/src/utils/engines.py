@@ -82,6 +82,8 @@ def valid_one_epoch(
                 preds = model(samples)
                 if cnt == 0:
                     print(preds)
+                    print(torch.argmax(preds, dim=1))
+                    print(labels)
                     cnt += 1
 
                 score = preds if score is None else torch.cat([score, preds])
